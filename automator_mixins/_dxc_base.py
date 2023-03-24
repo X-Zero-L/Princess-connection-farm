@@ -155,8 +155,6 @@ class DXCBaseMixin(FightBaseMixin):
                 if p0 > p1 and p0 > 0.8:
                     self.log.write_log("info", "地下城次数已经用完，放弃。")
                     raise ReturnValue("0/1")
-                else:
-                    pass
 
             FC = self.getFC().getscreen()
             # 开图跳脸防止
@@ -201,94 +199,81 @@ class DXCBaseMixin(FightBaseMixin):
             # 不在OCR库中
             return -1
         sc = self.getscreen()
-        probs = {}
-        for i, j in DXC_NUM[dxc_id].items():
-            probs[i] = self.img_prob(j, screen=sc)
-
+        probs = {i: self.img_prob(j, screen=sc) for i, j in DXC_NUM[dxc_id].items()}
         best = max(probs, key=lambda x: probs[x])
         values = sorted(probs.values(), reverse=True)
         # 必须有差距，否则失败
-        if values[0] - values[1] < 0.05 or values[0] < 0.8:
-            return -1
-        else:
-            return best
+        return -1 if values[0] - values[1] < 0.05 or values[0] < 0.8 else best
 
     @DEBUG_RECORD
     def dixiachengzuobiao(self, x, y, auto, team=0):
-        # 完整刷完地下城函数
-        # 参数：
-        # x：目标层数的x轴坐标
-        # y：目标层数的y轴坐标
-        # auto：取值为0/1,auto=0时不点击auto按钮，auto=1时点击auto按钮
-        # team：取值为0/1/2，team=0时不换队，team=1时更换为队伍列表中的1队，team=2时更换为队伍列表中的2队
         if self.is_dixiacheng_end:
             return
-        else:
-            while True:
-                screen_shot_ = self.getscreen()
-                if UIMatcher.img_where(screen_shot_, 'img/chetui.jpg'):
-                    break
-                self.click(1, 1)
-                time.sleep(1)
-            time.sleep(1)
-            while True:
-                screen_shot_ = self.getscreen()
-                if UIMatcher.img_where(screen_shot_, 'img/chetui.jpg'):
-                    break
-                self.click(1, 1)
-                time.sleep(1)
+        while True:
+            screen_shot_ = self.getscreen()
+            if UIMatcher.img_where(screen_shot_, 'img/chetui.jpg'):
+                break
             self.click(1, 1)
-            time.sleep(3)
+            time.sleep(1)
+        time.sleep(1)
+        while True:
+            screen_shot_ = self.getscreen()
+            if UIMatcher.img_where(screen_shot_, 'img/chetui.jpg'):
+                break
+            self.click(1, 1)
+            time.sleep(1)
+        self.click(1, 1)
+        time.sleep(3)
 
-            self.click(x, y)  # 层数
-            time.sleep(2)
-            self.click(833, 456)  # 挑战
-            time.sleep(2)
+        self.click(x, y)  # 层数
+        time.sleep(2)
+        self.click(833, 456)  # 挑战
+        time.sleep(2)
 
+        while True:  # 锁定战斗开始
+            screen_shot_ = self.getscreen()
+            if UIMatcher.img_where(screen_shot_, 'img/zhandoukaishi.jpg'):
+                break
+
+        if team != 0:  # 换队
+            self.click(866, 91)  # 我的队伍
+            time.sleep(2)
+            if team == 1:
+                self.click(792, 172)  # 1队
+            elif team == 2:
+                self.click(789, 290)  # 2队
+            time.sleep(0.5)
             while True:  # 锁定战斗开始
                 screen_shot_ = self.getscreen()
                 if UIMatcher.img_where(screen_shot_, 'img/zhandoukaishi.jpg'):
                     break
-
-            if team != 0:  # 换队
-                self.click(866, 91)  # 我的队伍
-                time.sleep(2)
-                if team == 1:
-                    self.click(792, 172)  # 1队
-                elif team == 2:
-                    self.click(789, 290)  # 2队
                 time.sleep(0.5)
-                while True:  # 锁定战斗开始
-                    screen_shot_ = self.getscreen()
-                    if UIMatcher.img_where(screen_shot_, 'img/zhandoukaishi.jpg'):
+
+        self.click(837, 447)  # 战斗开始
+        time.sleep(2)
+
+        # while True:  # 战斗中快进
+        #     screen_shot_ = self.getscreen()
+        #     if UIMatcher.img_where(screen_shot_, 'img/caidan.jpg'):
+        #         if auto == 1:
+        #             time.sleep(0.5)
+        #             self.d.click(912, 423)  # 点auto按钮
+        #             time.sleep(1)
+        #         break
+        while True:  # 结束战斗返回
+            screen_shot_ = self.getscreen()
+            if UIMatcher.img_where(screen_shot_, 'img/shanghaibaogao.jpg'):
+                while True:
+                    screen_shot = self.getscreen()
+                    if UIMatcher.img_where(screen_shot, 'img/xiayibu.jpg'):
+                        self.click(830, 503)
                         break
-                    time.sleep(0.5)
-
-            self.click(837, 447)  # 战斗开始
-            time.sleep(2)
-
-            # while True:  # 战斗中快进
-            #     screen_shot_ = self.getscreen()
-            #     if UIMatcher.img_where(screen_shot_, 'img/caidan.jpg'):
-            #         if auto == 1:
-            #             time.sleep(0.5)
-            #             self.d.click(912, 423)  # 点auto按钮
-            #             time.sleep(1)
-            #         break
-            while True:  # 结束战斗返回
-                screen_shot_ = self.getscreen()
-                if UIMatcher.img_where(screen_shot_, 'img/shanghaibaogao.jpg'):
-                    while True:
-                        screen_shot = self.getscreen()
-                        if UIMatcher.img_where(screen_shot, 'img/xiayibu.jpg'):
-                            self.click(830, 503)
-                            break
-                        if UIMatcher.img_where(screen_shot, 'img/gotodixiacheng.jpg'):
-                            self.is_dixiacheng_end = 1
-                            self.click(830, 503)
-                            break
-                    self.click(830, 503)  # 点下一步 避免guochang可能失败
-                    break
-            time.sleep(3)
-            self.click(1, 1)  # 取消显示结算动画
-            time.sleep(1)
+                    if UIMatcher.img_where(screen_shot, 'img/gotodixiacheng.jpg'):
+                        self.is_dixiacheng_end = 1
+                        self.click(830, 503)
+                        break
+                self.click(830, 503)  # 点下一步 避免guochang可能失败
+                break
+        time.sleep(3)
+        self.click(1, 1)  # 取消显示结算动画
+        time.sleep(1)

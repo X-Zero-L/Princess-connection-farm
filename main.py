@@ -47,19 +47,17 @@ def CheckStateReturn():
     for acc in users:
         AR = AutomatorRecorder(acc)
         uj = AR.getuser()
-        acc_task_tmpinfo = "账号:%s 任务:%s 状态:" % (acc, "NONE" if uj["taskfile"] == "" else uj["taskfile"])
+        acc_task_tmpinfo = f'账号:{acc} 任务:{"NONE" if uj["taskfile"] == "" else uj["taskfile"]} 状态:'
         rs = AR.get_run_status()
         if rs["error"] is None:
             if rs["finished"]:
-                acc_task_tmpinfo = acc_task_tmpinfo + "FINISHED."
+                acc_task_tmpinfo = f"{acc_task_tmpinfo}FINISHED."
             else:
-                acc_task_tmpinfo = acc_task_tmpinfo + "CURRENT:%s" % rs["current"]
+                acc_task_tmpinfo = f'{acc_task_tmpinfo}CURRENT:{rs["current"]}'
         else:
-            acc_task_tmpinfo = acc_task_tmpinfo + "ERROR:%s" % rs["error"]
-        acc_task_info.append(acc_task_tmpinfo)
-        acc_task_info.append('\n')
-    acc_task_info = ''.join(acc_task_info).replace(',', '\n').replace("'", '')
-    return acc_task_info
+            acc_task_tmpinfo = f'{acc_task_tmpinfo}ERROR:{rs["error"]}'
+        acc_task_info.extend((acc_task_tmpinfo, '\n'))
+    return ''.join(acc_task_info).replace(',', '\n').replace("'", '')
 
 
 def ClearError(acc):
@@ -86,7 +84,7 @@ def Restart(acc):
     rs["finished"] = False
     rs["current"] = "..."
     AR.set_run_status(rs)
-    target = "rec/%s.rec" % acc
+    target = f"rec/{acc}.rec"
     if os.path.exists(target):
         os.remove(target)  # 删除行动记录文件
 
@@ -117,8 +115,24 @@ if __name__ == '__main__':
             cmd = input("> ")
             cmds = cmd.split(" ")
             order = cmds[0]
-            if order == "exit":
+            if order == "clear":
+                if len(cmds) > 1:
+                    ClearError(cmds[1])
+                else:
+                    print("需要指定Account")
+            elif order == "continue":
+                RunContinue()
+            elif order == "edit":
+                exec(open("_deprecated\\CreateUser.py", "r", encoding="utf-8").read())
+            elif order == "exit":
                 break
+            elif order == "finish":
+                if len(cmds) > 1:
+                    SetFinished(cmds[1])
+                else:
+                    print("需要指定Account")
+            elif order == "first":
+                RunFirstTime()
             elif order == "help":
                 print("脚本控制帮助")
                 print("first 所有脚本全部重跑")
@@ -129,32 +143,16 @@ if __name__ == '__main__':
                 print("restart ACCOUNT 清除Account的运行记录，让它重新开始")
                 print("finish ACCOUNT 标记Account已经刷完，不再继续刷")
                 print("edit 进入用户配置编辑模式")
-            elif order == "first":
-                RunFirstTime()
-            elif order == "continue":
-                RunContinue()
-            elif order == "state":
-                if len(cmds) == 2 and cmds[1] == "-tuitu":
-                    CheckTuitu()
-                else:
-                    CheckState()
-            elif order == "clear":
-                if len(cmds) > 1:
-                    ClearError(cmds[1])
-                else:
-                    print("需要指定Account")
             elif order == "restart":
                 if len(cmds) > 1:
                     Restart(cmds[1])
                 else:
                     print("需要指定Account")
-            elif order == "finish":
-                if len(cmds) > 1:
-                    SetFinished(cmds[1])
+            elif order == "state":
+                if len(cmds) == 2 and cmds[1] == "-tuitu":
+                    CheckTuitu()
                 else:
-                    print("需要指定Account")
-            elif order == "edit":
-                exec(open("_deprecated\\CreateUser.py", "r", encoding="utf-8").read())
+                    CheckState()
             else:
                 print("未知的命令")
         except Exception as e:

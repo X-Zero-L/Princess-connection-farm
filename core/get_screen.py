@@ -32,11 +32,12 @@ class ReceiveFromMinicap:
         self.d = adbutils.adb.device(address)
         self.lport = self.d.forward_port(7912)
         # 这里设置websocket
-        self.ws = websocket.WebSocketApp('ws://localhost:{}/minicap'.format(self.lport),
-                                         # 这三个回调函数见下面
-                                         on_message=self.on_message,
-                                         on_close=self.on_close,
-                                         on_error=self.on_error)
+        self.ws = websocket.WebSocketApp(
+            f'ws://localhost:{self.lport}/minicap',
+            on_message=self.on_message,
+            on_close=self.on_close,
+            on_error=self.on_error,
+        )
         self.receive_thread: Optional[threading.Thread] = None
         self.ws_stop = 0
 
@@ -88,9 +89,8 @@ class ReceiveFromMinicap:
                     if self.receive_flag == 1:
                         self.receive_data.put(message)
                         self.receive_flag = 0
-                else:
-                    if debug:
-                        self.log.write_log('debug', message)
+                elif debug:
+                    self.log.write_log('debug', message)
             except queue.Empty:
                 pass
 
@@ -102,11 +102,12 @@ class ReceiveFromMinicap:
             return
         self.ws.close()
         self.lport = self.d.forward_port(7912)
-        self.ws = websocket.WebSocketApp('ws://localhost:{}/minicap'.format(self.lport),
-                                         # 这三个回调函数见下面
-                                         on_message=self.on_message,
-                                         on_close=self.on_close,
-                                         on_error=self.on_error)
+        self.ws = websocket.WebSocketApp(
+            f'ws://localhost:{self.lport}/minicap',
+            on_message=self.on_message,
+            on_close=self.on_close,
+            on_error=self.on_error,
+        )
         time.sleep(1)
 
     # 关闭ws的回调函数

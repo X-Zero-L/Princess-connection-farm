@@ -37,8 +37,6 @@ def list_task():
                 r['subtasks'] = subtasks
         except Exception as e:
             print(e)
-            pass
-
         res.append(r)
 
     return ListReply(res, len(res))
@@ -115,10 +113,10 @@ def create_task():
 
     body = request.form or request.get_json()
     if body is None:
-        return BadRequestError(f'参数不合法')
+        return BadRequestError('参数不合法')
     taskname = body.get('taskname', '')
     if taskname == '':
-        return BadRequestError(f'参数 taskname 不为空')
+        return BadRequestError('参数 taskname 不为空')
 
     service_create_task(taskname)
     return Reply({'taskname': taskname})
@@ -160,13 +158,10 @@ def update_task(taskname):
         description: 参数有误等
     """
     if taskname == '':
-        return BadRequestError(f'参数 taskname 不为空')
+        return BadRequestError('参数 taskname 不为空')
 
     body = request.form or request.get_json()
-    if body is None:
-        return BadRequestError(f'参数不合法')
-
-    return Reply({})
+    return BadRequestError('参数不合法') if body is None else Reply({})
 
 
 @task_api.route('/task/<taskname>', methods=['DELETE'])
@@ -191,7 +186,7 @@ def delete_task(taskname):
         description: 参数有误等
     """
     if taskname == '':
-        return BadRequestError(f'参数 taskname 不为空')
+        return BadRequestError('参数 taskname 不为空')
 
     del_task(taskname)
 

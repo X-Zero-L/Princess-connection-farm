@@ -96,7 +96,7 @@ class Automator(HanghuiMixin, LoginMixin, RoutineMixin, ShuatuMixin, JJCMixin, D
 
             return fun
 
-        self.log.write_log("info", f"任务列表：")
+        self.log.write_log("info", "任务列表：")
         # 解析任务列表
         self._task_index = {}
         for task in tasks["tasks"]:
@@ -131,10 +131,8 @@ class Automator(HanghuiMixin, LoginMixin, RoutineMixin, ShuatuMixin, JJCMixin, D
                                         typ = "nothing"
                                         use_default = False
                                     break
-                        if use_default:
-                            # 使用默认设置
-                            if detail["default"] is True:
-                                typ = "nothing"
+                        if use_default and detail["default"] is True:
+                            typ = "nothing"
 
             cur = VALID_TASK.T[typ]
             kwargs = {}
@@ -167,7 +165,7 @@ class Automator(HanghuiMixin, LoginMixin, RoutineMixin, ShuatuMixin, JJCMixin, D
                     _return_code = self.login_auth(account, password)
                     if _return_code == -1:
                         # 标记错误！
-                        self.task_error(str('%s账号出现了验证码' % self.account))
+                        self.task_error(str(f'{self.account}账号出现了验证码'))
                         if captcha_skip:
                             self.fix_reboot(False)
                             return False
@@ -186,11 +184,11 @@ class Automator(HanghuiMixin, LoginMixin, RoutineMixin, ShuatuMixin, JJCMixin, D
                 self.task_finished()
                 return True
             except ForceKillException as e:
-                pcr_log(account).write_log(level='info', message=f'强制终止')
+                pcr_log(account).write_log(level='info', message='强制终止')
                 try:
                     self.fix_reboot(False)
                 except:
-                    pcr_log(account).write_log(level='warning', message=f'强制终止-重启失败！')
+                    pcr_log(account).write_log(level='warning', message='强制终止-重启失败！')
                 raise e
             except FastScreencutException as e:
                 pcr_log(account).write_log(level='error', message=f'快速截图出现错误，{str(e)},尝试重新连接……')

@@ -45,17 +45,18 @@ class ShuatuMixin(ShuatuBaseMixin):
         mode: N or H or VH
         返回MA-B的： X,Y,卵用没有参数，Drag方向
         """
-        if mode == "N":
+        if mode == "H":
+            D = HARD_COORD[nowA]
+            return D[nowB].x, D[nowB].y, 1, None
+        elif mode == "N":
             D = NORMAL_COORD[nowA]
             DR = D["right"]
             DL = D["left"]
-            if nowB in DR:
-                return DR[nowB].x, DR[nowB].y, 1, "right"
-            else:
-                return DL[nowB].x, DL[nowB].y, 1, "left"
-        elif mode == "H":
-            D = HARD_COORD[nowA]
-            return D[nowB].x, D[nowB].y, 1, None
+            return (
+                (DR[nowB].x, DR[nowB].y, 1, "right")
+                if nowB in DR
+                else (DL[nowB].x, DL[nowB].y, 1, "left")
+            )
         else:
             D = VH_COORD[nowA]
             return D[nowB].x, D[nowB].y, 1, None
@@ -73,7 +74,7 @@ class ShuatuMixin(ShuatuBaseMixin):
             S.select_normal_id(max_map)
             now_id = max_map
 
-        for now in range(max_do):
+        for _ in range(max_do):
             SN = S.enter_NAB(now_id,1)
             SN:FightInfoZhuXianNormal
             if SN is None:
@@ -176,10 +177,9 @@ class ShuatuMixin(ShuatuBaseMixin):
                 S.goto_hard()
             if mode == 0:
                 fromA, fromB = self.get_next_normal_id()
-                self.record_tuitu_state(mode,fromA,fromB,False)
             else:
                 fromA, fromB = self.get_next_hard_id()
-                self.record_tuitu_state(mode,fromA,fromB,False)
+            self.record_tuitu_state(mode,fromA,fromB,False)
         else:
             fromA, fromB = self.parse_tu_str(from_)
         nowA, nowB = fromA, fromB
@@ -436,9 +436,15 @@ class ShuatuMixin(ShuatuBaseMixin):
             else:
                 TA,TB = [int(x) for x in to.split("-")]
             for aa in range(A,TA+1):
-                for bb in range(B if aa==A else 1,
-                                max(list(D[aa]['left'])+list(D[aa]['right']))+1 if aa<TA else TB+1):
-                    LST.append(f"{aa}-{bb}-1")
+                LST.extend(
+                    f"{aa}-{bb}-1"
+                    for bb in range(
+                        B if aa == A else 1,
+                        max(list(D[aa]['left']) + list(D[aa]['right'])) + 1
+                        if aa < TA
+                        else TB + 1,
+                    )
+                )
         elif mode == 1:
             if from_ == "new":
                 self.get_zhuye().goto_maoxian().goto_hard().clear_initFC()
@@ -453,9 +459,10 @@ class ShuatuMixin(ShuatuBaseMixin):
             else:
                 TA, TB = [int(x) for x in to.split("-")]
             for aa in range(A, TA + 1):
-                for bb in range(B if aa == A else 1,
-                               4 if aa < TA else TB + 1):
-                    LST.append(f"H{aa}-{bb}-1")
+                LST.extend(
+                    f"H{aa}-{bb}-1"
+                    for bb in range(B if aa == A else 1, 4 if aa < TA else TB + 1)
+                )
         elif mode == 2:
             if from_ == "new":
                 self.get_zhuye().goto_maoxian().goto_vh().clear_initFC()
@@ -470,9 +477,10 @@ class ShuatuMixin(ShuatuBaseMixin):
             else:
                 TA, TB = [int(x) for x in to.split("-")]
             for aa in range(A, TA + 1):
-                for bb in range(B if aa == A else 1,
-                               4 if aa < TA else TB + 1):
-                    LST.append(f"VH{aa}-{bb}-1")
+                LST.extend(
+                    f"VH{aa}-{bb}-1"
+                    for bb in range(B if aa == A else 1, 4 if aa < TA else TB + 1)
+                )
         else:
             raise ValueError("mode can only be 0 or 1")
 
@@ -542,9 +550,9 @@ class ShuatuMixin(ShuatuBaseMixin):
                 buy_tili=buy_tili,
                 team_order="dengji",
                 win_without_threestar_is_lose=force_as_ocr_as_possible,
-                lose_action="exit" if auto_upgrade==0 else "upgrade",
-                upgrade_kwargs=dict(do_shuatu=False if auto_upgrade==1 else True),
-                var=var
+                lose_action="exit" if auto_upgrade == 0 else "upgrade",
+                upgrade_kwargs=dict(do_shuatu=auto_upgrade != 1),
+                var=var,
             )
         else:
             self.log.write_log("error", "该函数的非OCR版本已经不再维护，估计不能用了。")
@@ -617,9 +625,7 @@ class ShuatuMixin(ShuatuBaseMixin):
         duiwu = -2
         last_lose = False
         retry_cnt = 0
-        while nowA < toA or (nowA == toA and nowB <= toB):
-            if not self.check_shuatu():
-                break
+        while (nowA < toA or (nowA == toA and nowB <= toB)) and self.check_shuatu():
             if mode == 0:
                 jq = (nowB == GetMax(nowA))
                 em = 2 if jq else 1
@@ -650,7 +656,7 @@ class ShuatuMixin(ShuatuBaseMixin):
             bianzu = 0
             if s >= 0:
                 retry_cnt = 0
-            if s < 0 and not (s == -2 and self._zdzb_info == "nocishu"):
+            if s < 0 and (s != -2 or self._zdzb_info != "nocishu"):
                 if s == -3:
                     if mode == 1:
                         self.log.write_log("info", "无法点进关卡，可能当前关卡还未解锁，请先推Normal本。")
@@ -660,10 +666,9 @@ class ShuatuMixin(ShuatuBaseMixin):
                     self.lock_home()
                     enter()
                     retry_cnt += 1
-                    continue
                 else:
                     if self._zdzb_info == "notili":
-                        self.log.write_log("info", f"体力不足，终止推图。")
+                        self.log.write_log("info", "体力不足，终止推图。")
                     else:
                         self.log.write_log("error", f"推图过程中遇到未知的错误 :{s}，终止推图。")
                     break  # 出现未知错误
@@ -676,7 +681,7 @@ class ShuatuMixin(ShuatuBaseMixin):
                     break
                 last_lose = True
                 if auto_upgrade > 0:
-                    self.auto_upgrade(buy_tili=buy_tili, do_shuatu=True if auto_upgrade == 2 else False, var=var)
+                    self.auto_upgrade(buy_tili=buy_tili, do_shuatu=auto_upgrade == 2, var=var)
                     # 还要回来
                     enter()
                     continue
@@ -811,17 +816,13 @@ class ShuatuMixin(ShuatuBaseMixin):
         self.select_normal_id(1)
         P = NORMAL_COORD[1]['left'][1]
         T = 1
-        while T > 0:
-            if not self.check_shuatu():
-                break
-
+        while T > 0 and self.check_shuatu():
             if mode <= 1:
                 T = self.zhandouzuobiao(P.x, P.y, "all", None, use_saodang=True, auto=0, speed=1, buy_tili=buytili,
                                         var=var)
-                if T == -2:
-                    if mode == 1:
-                        T = self.zhandouzuobiao(P.x, P.y, 99999999, None, use_saodang=False, auto=0, speed=1,
-                                                buy_tili=buytili, var=var)
+                if T == -2 and mode == 1:
+                    T = self.zhandouzuobiao(P.x, P.y, 99999999, None, use_saodang=False, auto=0, speed=1,
+                                            buy_tili=buytili, var=var)
             else:
                 T = self.zhandouzuobiao(P.x, P.y, 99999999, None, use_saodang=False, auto=0, speed=1, buy_tili=buytili,
                                         var=var)
@@ -1045,7 +1046,7 @@ class ShuatuMixin(ShuatuBaseMixin):
                     return
                 elif s == -3:
                     if retry_cnt == 0:
-                        self.log.write_log("error", f"无法进入刷图，刷图终止")
+                        self.log.write_log("error", "无法进入刷图，刷图终止")
                         self.lock_home()
                         return
                     retry_cnt += 1
@@ -1054,20 +1055,11 @@ class ShuatuMixin(ShuatuBaseMixin):
                     continue
                 elif s > 0 or self._zdzb_info == "nocishu":
                     # 扫荡成功，记录一下~
-                    if s == 1:
-                        now_time += 1
-                    else:
-                        now_time += t
+                    now_time += 1 if s == 1 else t
                     if m == "N":
-                        if s == 1:
-                            ds["normal"][f"{a}-{b}"] += 1
-                        else:
-                            ds["normal"][f"{a}-{b}"] += t
+                        ds["normal"][f"{a}-{b}"] += 1 if s == 1 else t
                     else:
-                        if s == 1:
-                            ds["hard"][f"{a}-{b}"] += 1
-                        else:
-                            ds["hard"][f"{a}-{b}"] += t
+                        ds["hard"][f"{a}-{b}"] += 1 if s == 1 else t
                     self.AR.set("daily_status", ds)
                     new_day(ds)
                 elif self._zdzb_info == "noquan":
@@ -1079,7 +1071,7 @@ class ShuatuMixin(ShuatuBaseMixin):
                     self.lock_home()
                     return
             self.log.write_log("info", f"{a}-{b}刷图成功！")
-        self.log.write_log("info", f"全部刷图任务已经完成。")
+        self.log.write_log("info", "全部刷图任务已经完成。")
         self.lock_home()
 
     def shuatu_daily_ocr(self,

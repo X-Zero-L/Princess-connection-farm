@@ -105,39 +105,36 @@ def connect():  # 连接adb与uiautomator
     try:
         if enable_auto_find_emulator:
             port_list = check_known_emulators()
-            print("自动搜寻模拟器：" + str(port_list))
+            print(f"自动搜寻模拟器：{str(port_list)}")
             for port in port_list:
-                os.system('cd adb & adb connect ' + emulator_ip + ':' + str(port))
+                os.system(f'cd adb & adb connect {emulator_ip}:{str(port)}')
         if len(emulator_ports) != 0:
             for port in emulator_ports:
-                os.system('cd adb & adb connect ' + emulator_ip + ':' + str(port))
+                os.system(f'cd adb & adb connect {emulator_ip}:{str(port)}')
         # os.system 函数正常情况下返回是进程退出码，0为正常退出码，其余为异常
-        if os.system('cd adb & adb connect ' + selected_emulator) != 0:
+        if os.system(f'cd adb & adb connect {selected_emulator}') != 0:
             pcr_log('admin').write_log(level='error', message="连接模拟器失败")
             exit(1)
         if os.system('python -m uiautomator2 init') != 0:
             pcr_log('admin').write_log(level='error', message="初始化 uiautomator2 失败")
             exit(1)
     except Exception as e:
-        pcr_log('admin').write_log(level='error', message='连接失败, 原因: {}'.format(e))
+        pcr_log('admin').write_log(level='error', message=f'连接失败, 原因: {e}')
         exit(1)
 
     result = os.popen('cd adb & adb devices')  # 返回adb devices列表
     res = result.read()
-    lines = res.splitlines()[0:]
+    lines = res.splitlines()[:]
     while lines[0] != 'List of devices attached ':
         del lines[0]
 
     del lines[0]  # 删除表头
 
     device_dic = {}  # 存储设备状态
-    for i in range(0, len(lines) - 1):
-        lines[i], device_dic[lines[i]] = lines[i].split('\t')[0:]
-    lines = lines[0:-1]
-    out = []
-    for i in range(len(lines)):
-        if device_dic[lines[i]] == 'device':
-            out += [lines[i]]
+    for i in range(len(lines) - 1):
+        lines[i], device_dic[lines[i]] = lines[i].split('\t')[:]
+    lines = lines[:-1]
+    out = [lines[i] for i in range(len(lines)) if device_dic[lines[i]] == 'device']
     print(out)
     return out
 
@@ -192,11 +189,10 @@ def execute(continue_=False, max_retry=3):
         # 这个队列用来保存设备, 初始化的时候先把所有的模拟器设备放入队列
         queue = Manager().Queue()
 
-        # 进程池参数列表
-        params = list()
-        for acc, tas in zip(accounts, tasks):
-            params.append((acc, tas, queue, continue_, max_retry))
-
+        params = [
+            (acc, tas, queue, continue_, max_retry)
+            for acc, tas in zip(accounts, tasks)
+        ]
         # 初始化队列, 先把所有的模拟器设备放入队列
         for device in devices:
             queue.put(device)

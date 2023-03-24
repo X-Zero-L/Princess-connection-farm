@@ -51,8 +51,7 @@ def WindowMode(frame=None):
 
 def ImgCov(cvIMG):
     b, g, r = cv2.split(cvIMG)
-    IMG = cv2.merge([r, g, b])
-    return IMG
+    return cv2.merge([r, g, b])
 
 
 class ImgBox:
@@ -304,30 +303,31 @@ class AutomatorDebuger(Automator):
                 pass
 
         def OnRelease(event):
-            if self._obj["move"]:
-                self._obj["move"] = False
-                x1 = self._obj["x1"]
-                y1 = self._obj["y1"]
-                x2 = event.xdata
-                y2 = event.ydata
-                w = x2 - x1
-                h = y2 - y1
-                if w < 0:
-                    w = -w
-                    x1, x2 = x2, x1
-                if h < 0:
-                    h = -h
-                    y1, y2 = y2, y1
-                ax = plt.gca()
-                try:
-                    self._obj["rec"].remove()
-                except:
-                    pass
-                x1, x2, y1, y2 = int(x1), int(x2), int(y1), int(y2)
-                plt.xlim([x1, x2])
-                plt.ylim([y2, y1])
-                ax.figure.canvas.draw()
-                if verbose: print(f"at=({x1},{y1},{x2},{y2})")
+            if not self._obj["move"]:
+                return
+            self._obj["move"] = False
+            x1 = self._obj["x1"]
+            y1 = self._obj["y1"]
+            x2 = event.xdata
+            y2 = event.ydata
+            w = x2 - x1
+            h = y2 - y1
+            if w < 0:
+                w = -w
+                x1, x2 = x2, x1
+            if h < 0:
+                h = -h
+                y1, y2 = y2, y1
+            ax = plt.gca()
+            try:
+                self._obj["rec"].remove()
+            except:
+                pass
+            x1, x2, y1, y2 = int(x1), int(x2), int(y1), int(y2)
+            plt.xlim([x1, x2])
+            plt.ylim([y2, y1])
+            ax.figure.canvas.draw()
+            if verbose: print(f"at=({x1},{y1},{x2},{y2})")
 
         def OnKeyPress(event):
             if event.inaxes is None:
@@ -477,11 +477,10 @@ if __name__ == "__main__":
                     cmd = input("")
                     if cmd == "":
                         break
-                    else:
-                        try:
-                            print(eval(cmd))
-                        except:
-                            exec(cmd)
+                    try:
+                        print(eval(cmd))
+                    except:
+                        exec(cmd)
             else:
                 print("Wrong Order!")
         except Exception as e:

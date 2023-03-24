@@ -20,20 +20,14 @@ def get_list_all_batches():
 
 
 @batches_api.route('/get_batches/<filename>', methods=['GET'])
-# 查
 def get_batches_info(filename):
     try:
-        r = AutomatorRecorder.getbatch(filename)
-        if r:
-            return ListReply(r, 0)
-        else:
-            return 500
+        return ListReply(r, 0) if (r := AutomatorRecorder.getbatch(filename)) else 500
     except Exception as e:
         return 500
 
 
 @batches_api.route('/batches_save', methods=['POST'])
-# 增 改
 def save_batches():
     # '{"batch": [{"group": "\u88c5\u5907\u519c\u573a","taskfile": "n11\u88c5\u5907\u519c\u573a","priority": 0}]}'
     try:
@@ -41,21 +35,19 @@ def save_batches():
         BatchesFileName = request.json.get("filename")
         obj.pop("filename")
         save_dict = {"batch": [obj]}
-        if check_valid_batch(save_dict, is_raise=False):
-            AutomatorRecorder.setbatch(BatchName, save_dict)
-            old_batch = AutomatorRecorder.getbatch(BatchesFileName)
-            return jsonify({"code": 200, "msg": f"{old_batch}-保存成功"})
-        else:
+        if not check_valid_batch(save_dict, is_raise=False):
             return jsonify({"code": 500, "msg": f"{save_dict}-保存失败"})
+        AutomatorRecorder.setbatch(BatchName, save_dict)
+        old_batch = AutomatorRecorder.getbatch(BatchesFileName)
+        return jsonify({"code": 200, "msg": f"{old_batch}-保存成功"})
     except Exception as e:
         return jsonify({"code": 500, "msg": f"{e}-保存失败"})
 
 
 @batches_api.route('/batches_del/<filename>', methods=['GET'])
-# 删
 def del_schedule(filename):
     batch_addr = "batches"
-    target = "%s/%s.json" % (batch_addr, filename)
+    target = f"{batch_addr}/{filename}.json"
     if os.path.exists(target):
         os.remove(target)
         return 200

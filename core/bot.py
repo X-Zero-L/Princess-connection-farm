@@ -90,48 +90,49 @@ class Bot:
         :param img_title:
         :return:
         """
-        if len(s_sckey) != 0 or len(qqbot_key) != 0 or len(tg_token) != 0:
-            message = ''.join(message).replace('\n', '')
-            if s_level in self.lev_dic[log_lev]:
-                # self.acc_message.setdefault(s_level, [])
-                self.acc_message[s_level].append(message)
-                self.acc_message[s_level].append('\n')
-                # print(self.acc_message[s_level])
-                # print(len(self.acc_message[self.acc_name]))
-                # print(len(self.acc_message[s_level])//2, self.acc_message[s_level])
-            if s_level in self.lev_3 or (
+        if len(s_sckey) == 0 and len(qqbot_key) == 0 and len(tg_token) == 0:
+            return
+        message = ''.join(message).replace('\n', '')
+        if s_level in self.lev_dic[log_lev]:
+            # self.acc_message.setdefault(s_level, [])
+            self.acc_message[s_level].append(message)
+            self.acc_message[s_level].append('\n')
+            # print(self.acc_message[s_level])
+            # print(len(self.acc_message[self.acc_name]))
+            # print(len(self.acc_message[s_level])//2, self.acc_message[s_level])
+        if s_level in self.lev_3 or (
                     s_level in self.lev_dic[log_lev] and len(self.acc_message[s_level]) // 2 >= log_cache):
-                message = ''.join(self.acc_message[s_level]).replace(',', '\n').replace("'", '')
-                # print(message)
-                cpu_percent = psutil.cpu_percent(interval=1)
-                self.cpu_info = "CPU使用率：%i%%" % cpu_percent
-                # print(cpu_info)
-                virtual_memory = psutil.virtual_memory()
-                used_memory = virtual_memory.used / 1024 / 1024 / 1024
-                free_memory = virtual_memory.free / 1024 / 1024 / 1024
-                memory_percent = virtual_memory.percent
-                self.memory_info = "内存使用：%0.2fG||使用率%0.1f%%||剩余内存：%0.2fG" % (used_memory, memory_percent, free_memory)
-                # print(memory_info)
-                # 兼容老接口
-                if len(s_sckey) != 0 and img == '':
-                    self.wechat_bot(s_level, message=message, acc_state=acc_state)
-                if len(qqbot_key) != 0 and img == '':
-                    self.qq_bot(s_level, message=message, acc_state=acc_state)
-                if len(tg_token) != 0:
-                    self.tg_bot(s_level, message=message, acc_state=acc_state, img=img, img_title=img_title)
-                if len(wework_corpid) != 0 and len(wework_corpsecret) != 0:
-                    qywx = Qywx(s_level, acc_state)
-                    if not message == '':
-                        qywx.send_msg_message(message)
-                    if img is not None:
-                        upload_file = Image.open(BytesIO(img.read()))
-                        upload_file = upload_file.convert("RGB")
-                        # print(tr.run(img.copy().convert("L"), flag=tr.FLAG_ROTATED_RECT))
-                        result_img = upload_file.copy().convert("L")
-                        qywx.send_image_message(result_img)
-                if s_level not in self.lev_dic['3']:
-                    # 发送完后清空消息队列
-                    self.acc_message[s_level] = []
+            message = ''.join(self.acc_message[s_level]).replace(',', '\n').replace("'", '')
+            # print(message)
+            cpu_percent = psutil.cpu_percent(interval=1)
+            self.cpu_info = "CPU使用率：%i%%" % cpu_percent
+            # print(cpu_info)
+            virtual_memory = psutil.virtual_memory()
+            used_memory = virtual_memory.used / 1024 / 1024 / 1024
+            free_memory = virtual_memory.free / 1024 / 1024 / 1024
+            memory_percent = virtual_memory.percent
+            self.memory_info = "内存使用：%0.2fG||使用率%0.1f%%||剩余内存：%0.2fG" % (used_memory, memory_percent, free_memory)
+            # print(memory_info)
+            # 兼容老接口
+            if len(s_sckey) != 0 and img == '':
+                self.wechat_bot(s_level, message=message, acc_state=acc_state)
+            if len(qqbot_key) != 0 and img == '':
+                self.qq_bot(s_level, message=message, acc_state=acc_state)
+            if len(tg_token) != 0:
+                self.tg_bot(s_level, message=message, acc_state=acc_state, img=img, img_title=img_title)
+            if len(wework_corpid) != 0 and len(wework_corpsecret) != 0:
+                qywx = Qywx(s_level, acc_state)
+                if message:
+                    qywx.send_msg_message(message)
+                if img is not None:
+                    upload_file = Image.open(BytesIO(img.read()))
+                    upload_file = upload_file.convert("RGB")
+                    # print(tr.run(img.copy().convert("L"), flag=tr.FLAG_ROTATED_RECT))
+                    result_img = upload_file.copy().convert("L")
+                    qywx.send_image_message(result_img)
+            if s_level not in self.lev_dic['3']:
+                # 发送完后清空消息队列
+                self.acc_message[s_level] = []
 
     def wechat_bot(self, s_level, message='', acc_state=''):
         """
@@ -163,10 +164,7 @@ class Bot:
         :param _max: 大于等于后切割
         :return: 切割的字符串 切割后的字符串
         """
-        if len(msg) > _max:
-            return msg[:_max], msg[_max:]
-        else:
-            return None, msg
+        return (msg[:_max], msg[_max:]) if len(msg) > _max else (None, msg)
 
     def qq_bot(self, s_level, message='', acc_state=''):
         """
@@ -293,8 +291,6 @@ class Bot:
                         data = r.get("data")
                         self.img_url = data["url"]
                         img_delete = data["delete"]
-                    else:
-                        pass
                 img_h = {
                     "Connection": "keep-alive",
                     "Content-Type": "application/x-www-form-urlencoded",
@@ -382,14 +378,14 @@ class Qywx(Bot):
             raise Exception("msgtype参数错误，参数只能是image或text或voice或video或file")
         url = "https://qyapi.weixin.qq.com"
         token = self.get_token(url, self.corpid, self.corpsecret)
-        send_url = '%s/cgi-bin/message/send?access_token=%s' % (url, token)
+        send_url = f'{url}/cgi-bin/message/send?access_token={token}'
         respone = urllib.request.urlopen(urllib.request.Request(url=send_url, data=data)).read()
         x = json.loads(respone.decode())['errcode']
         if x == 0:
             # TODO: Bot作为一个log的扩展插件，暂时无法接入log
-            print("{} 发送成功".format(msg))
+            print(f"{msg} 发送成功")
         else:
-            raise SendFailed("{} 发送失败".format(msg))
+            raise SendFailed(f"{msg} 发送失败")
 
     def send_msg_message(self, msg, agid=1000002):
         try:
@@ -436,20 +432,20 @@ class Qywx(Bot):
             pass
 
     def get_token(self, url, corpid, corpsecret):
-        token_url = '%s/cgi-bin/gettoken?corpid=%s&corpsecret=%s' % (url, corpid, corpsecret)
-        token = json.loads(urllib.request.urlopen(token_url).read().decode())['access_token']
-        return token
+        token_url = f'{url}/cgi-bin/gettoken?corpid={corpid}&corpsecret={corpsecret}'
+        return json.loads(urllib.request.urlopen(token_url).read().decode())[
+            'access_token'
+        ]
 
     def get_upload_token(self, corid, corsec):
-        gurl = "https://qyapi.weixin.qq.com/cgi-bin/gettoken?corpid={}&corpsecret={}".format(corid, corsec)
+        gurl = f"https://qyapi.weixin.qq.com/cgi-bin/gettoken?corpid={corid}&corpsecret={corsec}"
         r = requests.get(gurl)
         dict_result = (r.json())
         return dict_result['access_token']
 
     def net_get_media_ID(self, media_bit, token, msgtype="image"):
         """上传资源到企业微信的存储上,msgtype有image,voice,video,file"""
-        media_url = "https://qyapi.weixin.qq.com/cgi-bin/media/upload?access_token={}&type={}".format(token,
-                                                                                                      msgtype)
+        media_url = f"https://qyapi.weixin.qq.com/cgi-bin/media/upload?access_token={token}&type={msgtype}"
         files = {msgtype: media_bit}
         r = requests.post(media_url, files=files)
         re = json.loads(r.text)
@@ -457,8 +453,7 @@ class Qywx(Bot):
 
     def get_media_ID(self, path, token, msgtype="image"):
         """上传资源到企业微信的存储上,msgtype有image,voice,video,file"""
-        media_url = "https://qyapi.weixin.qq.com/cgi-bin/media/upload?access_token={}&type={}".format(token,
-                                                                                                      msgtype)
+        media_url = f"https://qyapi.weixin.qq.com/cgi-bin/media/upload?access_token={token}&type={msgtype}"
         with open(path, 'rb') as f:
             files = {msgtype: f}
             r = requests.post(media_url, files=files)
@@ -478,5 +473,4 @@ class Qywx(Bot):
             msgtype: {msgid: msg},
             "safe": 0
         }
-        msges = (bytes(json.dumps(values), 'utf-8'))
-        return msges
+        return (bytes(json.dumps(values), 'utf-8'))

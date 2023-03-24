@@ -10,22 +10,17 @@ schedule_api = Blueprint('schedules', __name__)
 
 
 @schedule_api.route('/schedules', methods=['GET'])
-# 查
 def get_list_all_schedules():
     try:
         count = 0
         schedules = list_all_schedules()
         count = len(schedules)
-        if schedules:
-            return ListReply(schedules, count)
-        else:
-            return 500
+        return ListReply(schedules, count) if schedules else 500
     except Exception as e:
         return 500
 
 
 @schedule_api.route('/get_schedules/<filename>', methods=['GET'])
-# 查
 def get_schedules_info(filename):
     # x,y,z都为字典的拆分所产生出来的临时变量
     # 后面会优化
@@ -51,16 +46,12 @@ def get_schedules_info(filename):
                     # if not type(z[i]) is list:
                     z[i] = [z[i]]
                 r['schedules'] = [dict(zip(y, z))]
-        if r:
-            return ListReply(r, 0)
-        else:
-            return 500
+        return ListReply(r, 0) if r else 500
     except Exception as e:
         return 500
 
 
 @schedule_api.route('/schedules_save', methods=['POST'])
-# 增 改
 def save_schedules():
     # '{"name":"test","batchlist":["zhuangbeirichang"],"condition":{},"type":"asap"}'
     try:
@@ -69,12 +60,11 @@ def save_schedules():
         # old_schedule = AutomatorRecorder.getschedule(ScheduleFileName)
         obj.pop("filename")
         save_dict = {"schedules": [obj]}
-        if check_valid_schedule(save_dict, is_raise=False):
-            AutomatorRecorder.setschedule(ScheduleFileName, save_dict)
-            old_schedule = AutomatorRecorder.getschedule(ScheduleFileName)
-            return jsonify({"code": 200, "msg": f"{old_schedule}-保存成功"})
-        else:
+        if not check_valid_schedule(save_dict, is_raise=False):
             return jsonify({"code": 500, "msg": f"{save_dict}-保存失败"})
+        AutomatorRecorder.setschedule(ScheduleFileName, save_dict)
+        old_schedule = AutomatorRecorder.getschedule(ScheduleFileName)
+        return jsonify({"code": 200, "msg": f"{old_schedule}-保存成功"})
     except Exception as e:
         return jsonify({"code": 500, "msg": f"{e}-保存失败"})
 

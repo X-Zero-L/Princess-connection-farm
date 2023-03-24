@@ -140,7 +140,7 @@ class Pcr_Downloader:
         rate_num = int(rate * 100)
         number = int(50 * rate)
         r = '\r[%s%s]%d%%' % ("#" * number, " " * (50 - number), rate_num,)
-        print("\r {}".format(r), end=" ")  # \r回到行的开头
+        print(f"\r {r}", end=" ")
 
     def unzip(self):
 
@@ -176,21 +176,20 @@ class Pcr_Downloader:
 
         print('正在迁移先前用户配置信息...')
         dst = os.path.join(os.getcwd(), 'Princess-connection-farm')
-        shutil.rmtree(dst + '/xls')
+        shutil.rmtree(f'{dst}/xls')
         for fn in os.listdir():  # 遍历当前文件夹
             # print(file,type(file))
             # fn为目录下所有文件的文件名
             if fn in self.opt:  # 如果是用户文件
                 try:
-                    print('迁移文件[%s]-->[Princess-connection-farm]' % fn)
+                    print(f'迁移文件[{fn}]-->[Princess-connection-farm]')
                     if fn == 'config.ini':
                         print('>>>config由于特殊性，请自行对比更新目录下config_old，自行替换更新')
-                        shutil.copy('config.ini', dst + '/config_old.ini')
-                    else:
-                        if os.path.isfile(fn):
-                            shutil.copy(fn, dst + '/' + fn)
-                        elif os.path.isdir(fn):
-                            shutil.copytree(fn, dst + '/' + fn)
+                        shutil.copy('config.ini', f'{dst}/config_old.ini')
+                    elif os.path.isfile(fn):
+                        shutil.copy(fn, f'{dst}/{fn}')
+                    elif os.path.isdir(fn):
+                        shutil.copytree(fn, f'{dst}/{fn}')
                 except Exception as e:
                     print(e, '在迁移当前文件的过程中发生了意外的错误，程序终止！')
                     self.abortion()
@@ -208,12 +207,12 @@ class Pcr_Downloader:
 
         print('正在更新...')
         dst = os.getcwd().replace('\\', '/')
-        for fn in os.listdir(dst + '/Princess-connection-farm'):  # 遍历Princess-connection-farm文件夹
+        for fn in os.listdir(f'{dst}/Princess-connection-farm'):  # 遍历Princess-connection-farm文件夹
             # print(file,type(file))
             # fn为目录下所有文件的文件名
             if fn not in self.opt:  # 如果不是是用户文件
                 try:
-                    print('正在同步覆盖中[%s]' % fn)
+                    print(f'正在同步覆盖中[{fn}]')
                     if fn == 'config.ini':
                         print('>>>config由于特殊性，请自行对比目录下config_old，自行替换变量更新')
                         shutil.copy('config.ini', '/config_old.ini')
@@ -223,12 +222,16 @@ class Pcr_Downloader:
                             continue
 
                         if os.path.isfile(fn):
-                            shutil.copy(dst + '/Princess-connection-farm/' + fn,
-                                        os.getcwd().replace('\\', '/') + '/')
+                            shutil.copy(
+                                f'{dst}/Princess-connection-farm/{fn}',
+                                os.getcwd().replace('\\', '/') + '/',
+                            )
                         elif os.path.isdir(fn):
                             shutil.rmtree(os.getcwd().replace('\\', '/') + '/' + fn)
-                            shutil.copytree(dst + '/Princess-connection-farm/' + fn,
-                                            os.getcwd().replace('\\', '/') + '/' + fn)
+                            shutil.copytree(
+                                f'{dst}/Princess-connection-farm/{fn}',
+                                os.getcwd().replace('\\', '/') + '/' + fn,
+                            )
                 except Exception as e:
                     print(e, '在更新的过程中发生了意外的错误，程序终止！')
                     self.abortion()

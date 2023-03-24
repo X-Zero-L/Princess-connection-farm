@@ -106,11 +106,8 @@ def ZB_KC_FIX():
     # 修复装备库存
     global AR
     kc = AR.get("zhuangbei_kucun", UDD["zhuangbei_kucun"])
-    bad_k = []
-    for k in kc:
-        if k not in data.EQU_ID:
-            bad_k += [k]
-    if len(bad_k) == 0:
+    bad_k = [k for k in kc if k not in data.EQU_ID]
+    if not bad_k:
         print("装备库存无需修复。")
         return
     print("检测到有", len(bad_k), "个条目需要修复：")
@@ -154,11 +151,8 @@ def JS_FIX():
     # 修复角色信息
     global AR
     kc = AR.get("juese_info", UDD["juese_info"])
-    bad_k = []
-    for k in kc:
-        if k not in data.C_ID:
-            bad_k += [k]
-    if len(bad_k) == 0:
+    bad_k = [k for k in kc if k not in data.C_ID]
+    if not bad_k:
         print("角色名称无需修复。")
         return
     print("检测到有", len(bad_k), "个条目需要修复：")
@@ -205,9 +199,7 @@ def ToLibrary():
     for j, v in js.items():
         if j not in data.C_ID:
             continue
-        cur = {}
-        # e: equip 000000
-        cur['e'] = reduce(lambda x, y: x + str(int(y)), v['zb'], "")
+        cur = {'e': reduce(lambda x, y: x + str(int(y)), v['zb'], "")}
         # p: Rank
         cur['p'] = int(v["rank"])
         # r: Star
@@ -291,9 +283,9 @@ def FromLibrary(all=False):
         special = cur['q']
         js[key]['special'] = special
     AR.set("juese_info", js)
-    # zb
-    zb = AR.get("zhuangbei_kucun", UDD["zhuangbei_kucun"])
     if all:
+        # zb
+        zb = AR.get("zhuangbei_kucun", UDD["zhuangbei_kucun"])
         for cur in zb_info:
             eid = int(cur['e'], 16)
             if eid in data.ID_EQU:
@@ -325,17 +317,10 @@ def SearchJSName(name: str) -> int:
             return -1
     if name in data.C_ID:
         return data.C_ID[name]
-    else:
-        if JSNameWow is None:
-            return -1
-        else:
-            name = JSNameWow.get_all_by_tree(name)
-            if len(name) == 0:
-                return -1
-            elif name[0] in data.C_ID:
-                return data.C_ID[name[0]]
-            else:
-                return -1
+    if JSNameWow is None:
+        return -1
+    name = JSNameWow.get_all_by_tree(name)
+    return -1 if len(name) == 0 or name[0] not in data.C_ID else data.C_ID[name[0]]
 
 
 def JS_SHOW(name):
@@ -355,16 +340,13 @@ def JS_SHOW(name):
         CELL = {}
         # (0,0) - (0,1)
         CELL[(0, 0)] = 'R'
-        if 'rank' in v:
-            CELL[(0, 1)] = str(v['rank'])
-        else:
-            CELL[(0, 1)] = "？"
+        CELL[(0, 1)] = str(v['rank']) if 'rank' in v else "？"
         # (1,0) - (3,1)
-        if 'zb' not in v:
-            for i in range(6):
+        for i in range(6):
+                    # (1,0) - (3,1)
+            if 'zb' not in v:
                 CELL[(1 + i // 2, i % 2)] = "？"
-        else:
-            for i in range(6):
+            else:
                 CELL[(1 + i // 2, i % 2)] = '■' if v['zb'][i] else '□'
         CELL[(1, 2)] = "-->"
         # (0,3) - (3,4)
@@ -376,10 +358,7 @@ def JS_SHOW(name):
                 CELL[(1 + i // 2, i % 2 + 3)] = '■' if v['track_zb'][i] else '□'
         else:
             flag = False
-        if flag:
-            max_c = 4
-        else:
-            max_c = 1
+        max_c = 4 if flag else 1
         max_r = 3
         for r in range(max_r + 1):
             for c in range(max_c + 1):
@@ -428,13 +407,11 @@ def JS_TRACK(name, rank=0, zb_str="", track_str=None):
     if track_str is not None:
         if '.' not in track_str:
             A = int(track_str)
-            rank = A
             zb_str = "111111"
         else:
             A, B = track_str.split('.')
             A = int(A)
             B = int(B)
-            rank = A
             if B == 3:
                 zb_str = '010101'
             elif B == 4:
@@ -443,6 +420,7 @@ def JS_TRACK(name, rank=0, zb_str="", track_str=None):
                 zb_str = '011111'
             else:
                 raise Exception("错误的lib_track_str！")
+        rank = A
         obj[name]["track"] = track_str
     obj[name]["track_rank"] = int(rank)
     obj[name]["track_zb"] = ParseZBStr(zb_str)
@@ -451,10 +429,7 @@ def JS_TRACK(name, rank=0, zb_str="", track_str=None):
 
 
 def has_arg(args, key):
-    for k in args:
-        if k == key:
-            return True
-    return False
+    return any(k == key for k in args)
 
 
 def get_arg(args, key, default):
@@ -480,7 +455,12 @@ def JS_TRACKINFO():
     table.add_column("当前可满", justify='center')
     table.add_column("下一RANK", justify='center')
     for k, v in obj.items():
-        if not ('track_rank' in v and 'track_zb' in v and 'zb' in v and 'rank' in v):
+        if (
+            'track_rank' not in v
+            or 'track_zb' not in v
+            or 'zb' not in v
+            or 'rank' not in v
+        ):
             continue
         if k not in data.C_ID:
             continue
@@ -494,11 +474,7 @@ def JS_TRACKINFO():
         if before_sum == 0:
             continue
         if v['track_rank'] == v['rank']:
-            fg = True
-            for t1, t2 in zip(v['track_zb'], v['zb']):
-                if t1 and (not t2):
-                    fg = False
-                    break
+            fg = not any(t1 and (not t2) for t1, t2 in zip(v['track_zb'], v['zb']))
             if fg:
                 continue
         cur_rank = v['rank']
@@ -520,8 +496,8 @@ def JS_TRACKINFO():
         OG.finish()
         R += [OG]
         cur_rank -= 1
-        R += ["Rank " + str(cur_rank)]
-        R += ["x" + str(cur_after_sum)]
+        R += [f"Rank {cur_rank}"]
+        R += [f"x{str(cur_after_sum)}"]
         table.add_row(*R)
     print(table)
 
@@ -590,17 +566,16 @@ def ZB_ST_LACK(args):
             data.dict_plus(need_equip, ne, False)
     if has_arg(args, "--item"):
         lack = need_equip
+    elif has_arg(args, "--no-store"):
+        lack = data.calc_equips_decompose(need_equip)
     else:
-        if not has_arg(args, "--no-store"):
-            store = {}
-            zb = AR.get("zhuangbei_kucun", UDD["zhuangbei_kucun"])
-            for k, v in zb.items():
-                num, _, _ = v
-                if k in data.EQU_ID:
-                    store[data.EQU_ID[k]] = num
-            lack = data.calc_equips_decompose(need_equip, store)
-        else:
-            lack = data.calc_equips_decompose(need_equip)
+        store = {}
+        zb = AR.get("zhuangbei_kucun", UDD["zhuangbei_kucun"])
+        for k, v in zb.items():
+            num, _, _ = v
+            if k in data.EQU_ID:
+                store[data.EQU_ID[k]] = num
+        lack = data.calc_equips_decompose(need_equip, store)
     show = defaultdict(list)
     for equ in lack:
         show[data.EInfo[equ]['plevel']] += [equ]
@@ -621,7 +596,7 @@ def ZB_ST_LACK(args):
     for k in sorted(show, reverse=True):
         if k < min_rare or k > max_rare:
             continue
-        table = RTable(title="稀有度：" + LABEL[k], show_lines=True, box=rbox.HEAVY_EDGE)
+        table = RTable(title=f"稀有度：{LABEL[k]}", show_lines=True, box=rbox.HEAVY_EDGE)
         table.add_column("装备", justify="center")
         table.add_column("缺失", justify="center")
         if has_arg(args, "--normal"):
@@ -757,9 +732,7 @@ def ZB_ST_ADVICE(args, verbose=True):
         elif js_flag:
             cur = map_js[out]
             cur_sort = sorted(cur, reverse=True, key=lambda x: cur[x])
-            sss = []
-            for p in cur_sort:
-                sss += ["%s x%d" % (p, cur[p])]
+            sss = ["%s x%d" % (p, cur[p]) for p in cur_sort]
             row += ["\n".join(sss)]
         table.add_row(*row)
     print(table)

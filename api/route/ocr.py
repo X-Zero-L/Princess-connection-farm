@@ -14,7 +14,7 @@ from core.pcr_config import ocr_mode_main, ocr_mode_secondary, baidu_apiKey, bai
     ocrspace_ocr_apikey
 from pcrocr.ocr import PCROCRBasic
 
-ocr_list = [x for x in ocr_mode_secondary.split(',')]
+ocr_list = list(ocr_mode_secondary.split(','))
 ocr_list.insert(0, ocr_mode_main)
 for ocr_mode in ocr_list:
     try:
@@ -85,22 +85,14 @@ def ocr_is_work():
 
 @ocr_api.route('/local_ocr/', methods=['POST'])
 def local_ocr():
-    # 接收图片
-    upload_file = request.files.get('file')
-    # print(upload_file)
-    if upload_file:
-        result = sdk.predict(upload_file.read())
-        # print(result)
-        return result
+    if upload_file := request.files.get('file'):
+        return sdk.predict(upload_file.read())
     return 400
 
 
 @ocr_api.route('/local_ocr2/', methods=['POST'])
 def local_ocr2():
-    # 接收图片 二进制流
-    upload_file = request.files.get('file')
-    # print(upload_file)
-    if upload_file:
+    if upload_file := request.files.get('file'):
         upload_file = Image.open(BytesIO(upload_file.read()))
         upload_file = upload_file.convert("RGB")
         # print(tr.run(img.copy().convert("L"), flag=tr.FLAG_ROTATED_RECT))
@@ -112,13 +104,8 @@ def local_ocr2():
 
 @ocr_api.route('/local_ocr3/', methods=['POST'])
 def local_ocr3():
-    # 接收图片
-    upload_file = request.files.get('file')
-    # print(upload_file)
-    if upload_file:
-        result = ocr.classification(upload_file.read())
-        # print(result)
-        return result
+    if upload_file := request.files.get('file'):
+        return ocr.classification(upload_file.read())
     return 400
 
 
@@ -128,10 +115,7 @@ def local_ocr4():
     upload_file = base64.b64decode(request.form.get('file'))
     # print(upload_file)
     allowstr = request.form.get('allowstr')
-    if allowstr != 'null' and allowstr != 'None':
-        allowstr = allowstr
-    else:
-        allowstr = None
+    allowstr = allowstr if allowstr not in ['null', 'None'] else None
     if upload_file:
         result = easyocr_reader.readtext(upload_file, allowlist=allowstr, detail=0)
         # print(result)
@@ -184,7 +168,7 @@ def ocrspace_ocr(language='chs'):
         if type(r) is list:
             return str(r).replace("'", '').replace('[', '').replace(']', '')
     except Exception as e:
-        raise Exception('ocrspace_ocr发生了错误，原因为:{}'.format(e))
+        raise Exception(f'ocrspace_ocr发生了错误，原因为:{e}')
     return r.content.decode()
 
 
@@ -200,19 +184,12 @@ def pcrocr_ocr():
     # from pcrocr.utils import base64_decode
     # print(base64_decode(img))
 
-    if voc != 'null' and voc != 'None':
-        voc = voc
-    else:
-        voc = None
-
-    if do_pre != 'True' and do_pre != 'true':
-        do_pre = False
-    else:
-        do_pre = True
+    voc = voc if voc not in ['null', 'None'] else None
+    do_pre = do_pre in ['True', 'true']
     if img:
         try:
             result = pcr_ocr(x=img, voc=voc, do_pre=do_pre)
             return result['text']
         except FileNotFoundError as e:
-            raise Exception('PCR特化OCR发生了错误，原因为:{}'.format(e))
+            raise Exception(f'PCR特化OCR发生了错误，原因为:{e}')
     return 400

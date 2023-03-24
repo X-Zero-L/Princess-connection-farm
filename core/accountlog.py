@@ -51,9 +51,9 @@ def connect():  # 连接adb与uiautomator
     res = result.read()
     lines = res.splitlines()[1:]
 
-    for i in range(0, len(lines)):
+    for i in range(len(lines)):
         lines[i] = lines[i].split('\t')[0]
-    lines = lines[0:-1]
+    lines = lines[:-1]
     print(lines)
     emulatornum = len(lines)
     return (lines, emulatornum)
@@ -62,8 +62,8 @@ def connect():  # 连接adb与uiautomator
 def read():  # 读取账号
     account_dic = {}
     with open('../zhanghao2.txt', 'r') as f:  # 注意！请把账号密码写在zhanghao2.txt内,不是zhanghao.txt!!!!!
-        for i, line in enumerate(f):
-            account, password = line.split('\t')[0:2]
+        for line in f:
+            account, password = line.split('\t')[:2]
             account_dic[account] = password.strip()
     account_list = list(account_dic.keys())
     accountnum = len(account_list)

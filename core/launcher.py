@@ -77,7 +77,7 @@ class DnPlayer:
         self.name = info[1]
         self.top_win_handler = int(info[2])
         self.bind_win_handler = int(info[3])
-        self.is_in_android = True if int(info[4]) == 1 else False
+        self.is_in_android = int(info[4]) == 1
         self.pid = int(info[5])
         self.vbox_pid = int(info[6])
 
@@ -143,7 +143,7 @@ class LDLauncher(LauncherBase):
         cmd = f"{self.console_str} list2"
         text = subprocess.check_output(cmd).decode("gbk")
         info = text.split('\n')
-        result = list()
+        result = []
         for line in info:
             if len(line) > 1:
                 dnplayer = line.split(',')
@@ -156,10 +156,7 @@ class LDLauncher(LauncherBase):
         except Exception as e:
             print("WARNING: ", e)
             return False
-        if id >= len(all):
-            return False
-        else:
-            return all[id].is_running()
+        return False if id >= len(all) else all[id].is_running()
 
 
 
@@ -195,22 +192,14 @@ class BSLauncher(LauncherBase):
         cmd = f"{self.console_str} list"
         text = subprocess.check_output(cmd).decode("gbk")
         info_list = text.split('\n')
-        device_list = []
-        for i in info_list:
-            if len(i)>0:
-                device_list.append(i)  # Careful: Empty Lines.
-        return device_list
+        return [i for i in info_list if len(i)>0]
 
     def get_running_list(self):
         # 获取运行中模拟器列表
         cmd = f"{self.console_str} runninglist"
         text = subprocess.check_output(cmd).decode("gbk")
         info_list = text.split('\n')
-        device_list = []
-        for i in info_list:
-            if len(i)>0:
-                device_list.append(i)  # Careful: Empty Lines.
-        return device_list
+        return [i for i in info_list if len(i)>0]
 
     def is_running(self, id: int) -> bool:
         running_ids = {}
@@ -219,11 +208,7 @@ class BSLauncher(LauncherBase):
             run = self.get_running_list()
             for ind,device_name in enumerate(all):
                 running_ids[ind]=device_name in run
-            if id >= len(all):
-                return False
-            else:
-                return running_ids[id]
-
+            return False if id >= len(all) else running_ids[id]
         except Exception as e:
             print("WARNING: ", e)
             return False

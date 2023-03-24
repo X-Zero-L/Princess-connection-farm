@@ -113,13 +113,11 @@ class movevar:
        :param mode: 比较模式(==,<=,>=,!=,<,>...)
        :return: 判断的值
         """
-        cmd = "'__flag__' in self.var and '%s' in self.var['__flag__'] and self.var['__flag__']['%s']%s%s" % (
-            str(flagkey), str(flagkey), mode, str(flagvalue))
+        cmd = f"'__flag__' in self.var and '{str(flagkey)}' in self.var['__flag__'] and self.var['__flag__']['{str(flagkey)}']{mode}{str(flagvalue)}"
         return eval(cmd)
 
     def notflag(self, flagkey, flagvalue=1, mode="==") -> bool:
-        cmd = "'__flag__' not in self.var or '%s' not in self.var['__flag__'] or not self.var['__flag__']['%s']%s%s" % (
-            str(flagkey), str(flagkey), mode, str(flagvalue))
+        cmd = f"'__flag__' not in self.var or '{str(flagkey)}' not in self.var['__flag__'] or not self.var['__flag__']['{str(flagkey)}']{mode}{str(flagvalue)}"
         return eval(cmd)
 
 
@@ -286,21 +284,19 @@ class moveset:
             if last_use_var:
                 wpfun = self.wv(last_fun, last_id + 1, *last_args, ret=last_ret,
                                 **last_kwargs) if last_wrap else last_fun
-                self.addmove(last_id, wpfun)
             else:
                 wpfun = self.w(last_fun, last_id + 1, *last_args, ret=last_ret, varmap=last_varmap,
                                **last_kwargs) if last_wrap else last_fun
-                self.addmove(last_id, wpfun)
+            self.addmove(last_id, wpfun)
             self.last_move = (fun, last_id + 1, args, varmap, kwargs, use_var, wrap, ret)
         if mode == 2:
             last_id = self.last_move[1]
             if use_var:
                 wpfun = self.wv(fun, next_id, *args, ret=ret, **kwargs) if wrap else fun
-                self.addmove(last_id, wpfun)
             else:
                 wpfun = self.w(fun, next_id, *args, ret=ret, varmap=varmap,
                                **kwargs) if wrap else fun
-                self.addmove(last_id, wpfun)
+            self.addmove(last_id, wpfun)
             self.last_move = None
         elif mode == 3:
             last_id = self.last_move[1]
@@ -469,15 +465,14 @@ class moveset:
         if return_ is None:
             return self._autoadd(fun, 2, *args, next_id="__exit__", varmap=varmap, ret=ret, kwargs=kwargs,
                                  use_var=False)
-        else:
-            def f(var: Dict) -> IDType:
-                a = fun(*args, **kwargs)
-                if ret is not None:
-                    var[ret] = a
-                var["__return__"] = return_
-                return "__exit__"
+        def f(var: Dict) -> IDType:
+            a = fun(*args, **kwargs)
+            if ret is not None:
+                var[ret] = a
+            var["__return__"] = return_
+            return "__exit__"
 
-            return self._autoadd(f, 3)
+        return self._autoadd(f, 3)
 
     def exitwv(self, fun: AnyFun, *args, ret=None, return_=None, kwargs=None) -> int:
         """
@@ -493,15 +488,14 @@ class moveset:
         """
         if return_ is None or ret:
             return self._autoadd(fun, 2, *args, next_id="__exit__", ret=ret, kwargs=kwargs, use_var=True)
-        else:
-            def f(var: Dict) -> IDType:
-                a = fun(var, *args, **kwargs)
-                if ret is not None:
-                    var[ret] = a
-                var["__return__"] = return_
-                return "__exit__"
+        def f(var: Dict) -> IDType:
+            a = fun(var, *args, **kwargs)
+            if ret is not None:
+                var[ret] = a
+            var["__return__"] = return_
+            return "__exit__"
 
-            return self._autoadd(f, 3)
+        return self._autoadd(f, 3)
 
     def exitset(self, ms, ret=None, return_=None, static=False, initvar: Optional[Dict] = None) -> int:
         """
@@ -557,10 +551,7 @@ class moveset:
             a = fun(*args, **kwargs)
             if ret is not None:
                 var[ret] = a
-            if callable(nextid):
-                nid = nextid(a)
-            else:
-                nid = nextid
+            nid = nextid(a) if callable(nextid) else nextid
             return a if nid is None else nid
 
         return f
@@ -582,10 +573,7 @@ class moveset:
             a = fun(*args, **kwargs, var=var)
             if ret is not None:
                 var[ret] = a
-            if callable(nextid):
-                nid = nextid(a)
-            else:
-                nid = nextid
+            nid = nextid(a) if callable(nextid) else nextid
             return a if nid is None else nid
 
         return f
@@ -602,10 +590,7 @@ class moveset:
         con = moveset.str2fun(con)
 
         def f(var: Dict):
-            if con(var):
-                return trueid
-            else:
-                return falseid
+            return trueid if con(var) else falseid
 
         return f
 
@@ -620,7 +605,7 @@ class moveset:
         :param static: 如果设置为True，在子moveset结束后，其变量区不删除
         :param initvar: 补充修改原movesetd的初值
         """
-        sub_name = "__moveset__%s" % ms.name
+        sub_name = f"__moveset__{ms.name}"
         ms = ms.copy()
         if initvar is None:
             initvar = {}
@@ -635,10 +620,7 @@ class moveset:
             finally:
                 if not static:
                     del var[sub_name]
-            if callable(nextid):
-                nid = nextid(a)
-            else:
-                nid = nextid
+            nid = nextid(a) if callable(nextid) else nextid
             return a if nid is None else nid
 
         return f
@@ -654,15 +636,14 @@ class moveset:
 
     @staticmethod
     def popstack(var: Dict):
-        if "__stack__" in var:
-            s = var["__stack__"]
-            p = s[-1]
-            del s[-1]
-            if len(s) == 0:
-                del var["__stack__"]
-            return p
-        else:
+        if "__stack__" not in var:
             raise Exception("Stack Empty!")
+        s = var["__stack__"]
+        p = s[-1]
+        del s[-1]
+        if len(s) == 0:
+            del var["__stack__"]
+        return p
 
     def T_mapstart(self,
                    id_map: Union[Dict[Union[IDType, List[IDType]], IDType], Callable[[IDType], Union[IDType, None]]],
@@ -690,10 +671,9 @@ class moveset:
             def do(next_cur):
                 if next_cur is None:
                     return "__last__"
-                else:
-                    if popstack:
-                        moveset.popstack(var)
-                    return next_cur
+                if popstack:
+                    moveset.popstack(var)
+                return next_cur
 
             last_cur = var["__stack__"][-1]
             if callable(id_map):
@@ -777,8 +757,7 @@ class moveset:
         :param mode: 比较模式(==,<=,>=,!=,<,>...)
         :return: start的ID
         """
-        cmd = "'__flag__' in var and '%s' in var['__flag__'] and var['__flag__']['%s']%s%s" % (
-            str(flagkey), str(flagkey), mode, str(flagvalue))
+        cmd = f"'__flag__' in var and '{str(flagkey)}' in var['__flag__'] and var['__flag__']['{str(flagkey)}']{mode}{str(flagvalue)}"
         return self._T_if(cmd)
 
     def T_if(self, key, value=1, mode="=="):
@@ -789,16 +768,15 @@ class moveset:
         :param mode: 比较模式(==,<=,>=,!=,<,>...)
         :return: start的ID
         """
-        cmd = "'%s' in var and var['%s']%s%s" % (str(key), str(key), mode, str(value))
+        cmd = f"'{str(key)}' in var and var['{str(key)}']{mode}{str(value)}"
         return self._T_if(cmd)
 
     def T_ifnotflag(self, flagkey, flagvalue=1, mode="=="):
-        cmd = "'__flag__' not in var or '%s' not in var['__flag__'] or not var['__flag__']['%s']%s%s" % (
-            str(flagkey), str(flagkey), mode, str(flagvalue))
+        cmd = f"'__flag__' not in var or '{str(flagkey)}' not in var['__flag__'] or not var['__flag__']['{str(flagkey)}']{mode}{str(flagvalue)}"
         return self._T_if(cmd)
 
     def T_ifnot(self, key, value=1, mode="=="):
-        cmd = "'%s' not in var or not var['%s']%s%s" % (str(key), str(key), mode, str(value))
+        cmd = f"'{str(key)}' not in var or not var['{str(key)}']{mode}{str(value)}"
         return self._T_if(cmd)
 
     def T_else(self) -> IDType:
@@ -872,33 +850,25 @@ class moveset:
     def _savestate(self):
         if not os.path.isdir(self.addr):
             os.makedirs(self.addr)
-        path = "%s/%s.rec" % (self.addr, self.name)
-        if not self.use_json:
-            mode = "wb"
-        else:
-            mode = "w"
-        file = open(path, mode)
-        if self.use_json:
-            json.dump(self.var, file, indent=1)
-        else:
-            pickle.dump(self.var, file)
-        file.close()
+        path = f"{self.addr}/{self.name}.rec"
+        mode = "w" if self.use_json else "wb"
+        with open(path, mode) as file:
+            if self.use_json:
+                json.dump(self.var, file, indent=1)
+            else:
+                pickle.dump(self.var, file)
 
     def _loadstate(self):
-        path = "%s/%s.rec" % (self.addr, self.name)
+        path = f"{self.addr}/{self.name}.rec"
         if not os.path.exists(path):
             return
-        if not self.use_json:
-            mode = "rb"
-        else:
-            mode = "r"
-        file = open(path, mode)
-        self.var.clear()
-        if self.use_json:
-            self.var.update(json.load(file))
-        else:
-            self.var.update(pickle.load(file))
-        file.close()
+        mode = "r" if self.use_json else "rb"
+        with open(path, mode) as file:
+            self.var.clear()
+            if self.use_json:
+                self.var.update(json.load(file))
+            else:
+                self.var.update(pickle.load(file))
 
     def savestate(self):
         """
@@ -911,11 +881,11 @@ class moveset:
             del p.var["__self__"]
             p.parent.savestate()
             p.var["__parent__"] = p.parent.var
-            p.var["__self__"] = p
         else:
             del p.var["__self__"]
             p._savestate()
-            p.var["__self__"] = p
+
+        p.var["__self__"] = p
 
     def loadstate(self):
         """
@@ -983,15 +953,14 @@ class moveset:
             except MoveRestartException as e:
                 pass
             except moveerr as me:
-                if me.code in self.catch:
-                    # 暂存当前cur并跳转
-                    nextid, savecur = self.catch[me.code]
-                    if savecur:
-                        self.var.setdefault("__stack__", [])
-                        self.var["__stack__"] += [cur]
-                    cur = nextid
-                else:
+                if me.code not in self.catch:
                     raise me
+                # 暂存当前cur并跳转
+                nextid, savecur = self.catch[me.code]
+                if savecur:
+                    self.var.setdefault("__stack__", [])
+                    self.var["__stack__"] += [cur]
+                cur = nextid
             except Exception as e:
                 if "__parent__" in self.var:
                     del self.var["__parent__"]

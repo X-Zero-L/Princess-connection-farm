@@ -156,13 +156,11 @@ class HanghuiMixin(ToolsMixin):
 
     def join_hanghui(self, clubname):
         # 2021-8-11 CyiceK修了点bug
-        self.log.write_log('info','>>>>>>>即将加入公会名为：' + clubname + '<<<<<<<')
+        self.log.write_log('info', f'>>>>>>>即将加入公会名为：{clubname}<<<<<<<')
         self.lock_home()
         # 进入
         self.click_btn(MAIN_BTN["hanghui"])
-        while True:
-            if self.is_exists(HANGHUI_BTN["zujianhanghui"]):
-                break
+        while not self.is_exists(HANGHUI_BTN["zujianhanghui"]):
             if self.is_exists(HANGHUI_BTN["chengyuanxinxi"]):
                 self.log.write_log('info',"已加入行会")
                 return
@@ -282,7 +280,6 @@ class HanghuiMixin(ToolsMixin):
                     if self.lock_img('img/dianzan.bmp', ifclick=[i], elseclick=[(480, 374)], retry=10):
                         if self.lock_img('img/queren.jpg', retry=8):
                             self.lock_no_img('img/queren.jpg', elseclick=[(480, 374)], retry=10)
-                            continue
                         else:
                             self.log.write_log("warning", "已经没有点赞次数了")
                             self.lock_home()
@@ -292,25 +289,23 @@ class HanghuiMixin(ToolsMixin):
                         self.lock_home()
                         break
 
-            # 点赞 战力降序第一/第二/第三个人
-            # (480, 374) 是ok的坐标
-        else:
-            if self.is_exists('img/dianzan.bmp'):
-                click_list = [(818, 198), (826, 316), (826, 428)]
-                for i in click_list:
-                    if self.lock_img('img/dianzan.bmp', ifclick=[i], elseclick=[(480, 374)], retry=10):
-                        if self.lock_img('img/queren.jpg', retry=8):
-                            self.lock_no_img('img/queren.jpg', elseclick=[(480, 374)], retry=10)
-                            continue
-                        else:
-                            self.log.write_log("warning", "已经没有点赞次数了")
-                            self.lock_home()
-                            break
+                # 点赞 战力降序第一/第二/第三个人
+                # (480, 374) 是ok的坐标
+        elif self.is_exists('img/dianzan.bmp'):
+            click_list = [(818, 198), (826, 316), (826, 428)]
+            for i in click_list:
+                if self.lock_img('img/dianzan.bmp', ifclick=[i], elseclick=[(480, 374)], retry=10):
+                    if self.lock_img('img/queren.jpg', retry=8):
+                        self.lock_no_img('img/queren.jpg', elseclick=[(480, 374)], retry=10)
+                        continue
                     else:
-                        self.log.write_log("error", "找不到点赞按钮")
+                        self.log.write_log("warning", "已经没有点赞次数了")
                         self.lock_home()
                         break
-            # 点赞 职务降序（默认） 第二/第三个人，副会长
+                else:
+                    self.log.write_log("error", "找不到点赞按钮")
+                    self.lock_home()
+                    break
         self.click(479, 381)
         screen_shot_ = self.getscreen()
         self.click_img(screen_shot_, 'img/queren.jpg')
@@ -466,7 +461,7 @@ class HanghuiMixin(ToolsMixin):
                         if not self.is_exists(img=TUANDUIZHAN_BTN["tiaozhan"]):
                             self.click(1, 1)
                 except Exception as e:
-                    pcr_log(self.account).write_log("info", f"识别不到boss信息，已退出本任务")
+                    pcr_log(self.account).write_log("info", "识别不到boss信息，已退出本任务")
                     return
             else:
                 continue
@@ -481,7 +476,7 @@ class HanghuiMixin(ToolsMixin):
                 if self.is_exists(TUANDUIZHAN_BTN["qianwangguanqia"]):
                     # self.lock_no_img(TUANDUIZHAN_BTN["qianwangguanqia"], elseclick=(592, 436))
                     # 刷 1-1获取次数？
-                    pcr_log(self.account).write_log("info", f"没有挑战次数")
+                    pcr_log(self.account).write_log("info", "没有挑战次数")
                     self.lock_home()
                     return False
                 if self.is_exists('img/notzhandoukaishi.bmp', at=(758, 423, 915, 473), is_black=True,
@@ -495,7 +490,9 @@ class HanghuiMixin(ToolsMixin):
                         # 点完人后确认一遍
                         if self.is_exists('img/notzhandoukaishi.bmp', at=(758, 423, 915, 473), is_black=True,
                                           black_threshold=1400):
-                            pcr_log(self.account).write_log(level='info', message="%s没有合适的人物打公会战!" % self.account)
+                            pcr_log(self.account).write_log(
+                                level='info', message=f"{self.account}没有合适的人物打公会战!"
+                            )
                             self.lock_home()
                             return False
                         break
@@ -525,7 +522,7 @@ class HanghuiMixin(ToolsMixin):
                 self.lock_img('img/auto_1.jpg', elseclick=[(914, 425)], elsedelay=0.2, retry=3)
                 self.lock_img('img/kuaijin_1.jpg', elseclick=[(913, 494)], elsedelay=0.2, retry=3)
             if self.is_exists('img/shanghaibaogao.jpg', at=(767, 18, 948, 65)) and \
-                    self.is_exists('img/xiayibu.jpg', at=(694, 474, 920, 535)):
+                        self.is_exists('img/xiayibu.jpg', at=(694, 474, 920, 535)):
                 self.lock_no_img('img/xiayibu.jpg', elseclick=[(806, 508)])
                 break
         self.lock_home()

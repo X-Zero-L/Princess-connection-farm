@@ -67,7 +67,9 @@ class AsyncMixin(ToolsMixin):
                     cumulative_time = cumulative_time + 1
 
             except Exception as e:
-                pcr_log(self.account).write_log(level='error', message='juqingtiaoguo-异步线程终止并检测出异常{}'.format(e))
+                pcr_log(self.account).write_log(
+                    level='error', message=f'juqingtiaoguo-异步线程终止并检测出异常{e}'
+                )
                 # sys.exit()
                 break
             await asyncio.sleep(0.8 + self.change_time)
@@ -80,11 +82,7 @@ class AsyncMixin(ToolsMixin):
         while Multithreading({}).is_stopped():
             try:
 
-                if self.last_screen is None:
-                    screenshot = self.getscreen()
-                else:
-                    screenshot = self.last_screen
-
+                screenshot = self.getscreen() if self.last_screen is None else self.last_screen
                 if time.time() - self.last_screen_time > async_screenshot_freq:
                     continue
                 time_start = time.time()
@@ -108,8 +106,10 @@ class AsyncMixin(ToolsMixin):
                     _time = time_end - time_start
                     _time = _time + _time
                     if _time > bad_connecting_time:
-                        pcr_log(self.account).write_log(level='error',
-                                                        message='%s卡connecting/loading了，qwq' % self.account)
+                        pcr_log(self.account).write_log(
+                            level='error',
+                            message=f'{self.account}卡connecting/loading了，qwq',
+                        )
                         _time = 0
                         raise Exception("loading时间过长")
 
@@ -132,7 +132,7 @@ class AsyncMixin(ToolsMixin):
                     cumulative_time = cumulative_time + 1
 
                 await asyncio.sleep(bad_connecting_time + cumulative_time)
-                # 过快可能会卡
+                        # 过快可能会卡
 
             except Exception as e:
                 self.send_move_method("restart", f"bad_connecting-{e}")
@@ -153,15 +153,14 @@ class AsyncMixin(ToolsMixin):
             try:
                 if time.time() - self.last_screen_time > async_screenshot_freq:
                     self.getscreen()
-                else:
-                    if self.last_screen is None:
-                        self.getscreen()
+                elif self.last_screen is None:
+                    self.getscreen()
                 await asyncio.sleep(0.8 + self.change_time)
                 # print('screen', self.change_time)
                 await asyncio.sleep(async_screenshot_freq)
-                # 如果之前已经截过图了，就不截图了
-                # print('截图中')
-                # cv2.imwrite('test.bmp', screenshot)
+                        # 如果之前已经截过图了，就不截图了
+                        # print('截图中')
+                        # cv2.imwrite('test.bmp', screenshot)
             except Exception as e:
                 pass
 
@@ -183,11 +182,8 @@ class AsyncMixin(ToolsMixin):
                 # print('相似', _same)
                 _cout = _cout + 1
                 if _cout >= 3000:
-                    raise Exception('%s卡同一界面过长（10min），即将重启qwq' % self.account)
-                    # print('重启')
-            else:
-                # print('不相似', _same)
-                pass
+                    raise Exception(f'{self.account}卡同一界面过长（10min），即将重启qwq')
+                                # print('重启')
 
     async def auto_time_sleep(self):
         """
@@ -211,7 +207,7 @@ class AsyncMixin(ToolsMixin):
                 self.change_time = 0.5
             if self.cpu_occupy >= 99:
                 self.change_time = self.change_time + 0.5
-            elif self.cpu_occupy <= 30 and self.change_time - 0.5 > 0.0:
+            elif self.cpu_occupy <= 30 and self.change_time > 0.5:
                 self.change_time = self.change_time - 0.1
 
     async def Report_Information(self):
@@ -270,9 +266,12 @@ class AsyncMixin(ToolsMixin):
         # 解锁异步
         async_block_sw = 0
         Multithreading({}).pause()
-        if fast_screencut and self.fastscreencut_retry < 3:
-            if self.receive_minicap is not None:
-                self.receive_minicap.stop()
+        if (
+            fast_screencut
+            and self.fastscreencut_retry < 3
+            and self.receive_minicap is not None
+        ):
+            self.receive_minicap.stop()
         # print(Multithreading({}).is_stopped())
 
     def start_async(self):

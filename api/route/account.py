@@ -122,16 +122,16 @@ def create_account():
     """
     body = request.form or request.get_json()
     if body is None:
-        return BadRequestError(f'参数不合法')
+        return BadRequestError('参数不合法')
     username = body.get('username', '')
     password = body.get('password', '')
     # taskname = body.get('taskname', '')
     # taskname已经被废弃不再需要
     try:
         if username == '':
-            return BadRequestError(f'参数 username 不为空')
+            return BadRequestError('参数 username 不为空')
         if password == '':
-            return BadRequestError(f'参数 password 不为空')
+            return BadRequestError('参数 password 不为空')
 
         service_create_account(account=username, password=password)
 
@@ -175,11 +175,11 @@ def update_account(username):
         description: 参数有误等
     """
     if username == '':
-        return BadRequestError(f'参数 username 不为空')
+        return BadRequestError('参数 username 不为空')
 
     body = request.form or request.get_json()
     if body is None:
-        return BadRequestError(f'参数不合法')
+        return BadRequestError('参数不合法')
     password = body.get('password', None)
     # taskname = body.get('taskname', None)
 
@@ -209,7 +209,7 @@ def delete_account(username):
         description: 参数有误等
     """
     if username == '':
-        return BadRequestError(f'参数 username 不为空')
+        return BadRequestError('参数 username 不为空')
 
     del_account(username)
 

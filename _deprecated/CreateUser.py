@@ -85,10 +85,7 @@ def TaskEditor(taskname):
             elif order == "clear":
                 obj = {"tasks": []}
             elif order == "list":
-                if len(cmds) > 1:
-                    tag = cmds[1].lstrip("-")
-                else:
-                    tag = ""
+                tag = cmds[1].lstrip("-") if len(cmds) > 1 else ""
                 for i in T:
                     if i.startswith(tag):
                         print(i, "  ：  ", T[i]["title"])
@@ -141,7 +138,7 @@ def create_account_from_file(file):
 
 
 def del_account(account):
-    target = "%s/%s.txt" % (user_addr, account)
+    target = f"{user_addr}/{account}.txt"
     if os.path.exists(target):
         os.remove(target)
 
@@ -183,7 +180,7 @@ def create_task(TaskName):
 
 
 def del_task(TaskName):
-    target = "%s/%s.txt" % (task_addr, TaskName)
+    target = f"{task_addr}/{TaskName}.txt"
     if os.path.exists(target):
         os.remove(target)
 
@@ -224,7 +221,7 @@ if __name__ == "__main__":
                     del_all_account()
                 elif len(cmds) == 3 and cmds[1] == "-d":
                     del_account(cmds[2])
-                elif len(cmds) in [3, 4, 5, 6] and cmds[1][0] != '-':
+                elif len(cmds) in {3, 4, 5, 6} and cmds[1][0] != '-':
                     p = 2
                     while p < len(cmds):
                         if cmds[p] == "-p" and p + 1 < len(cmds):
@@ -233,7 +230,7 @@ if __name__ == "__main__":
                         elif cmds[p] == "-t" and p + 1 < len(cmds) and cmds[p + 1] not in ["-p", "-t"]:
                             edit_account(cmds[1], taskfile=cmds[p + 1])
                             p += 2
-                        elif cmds[p] == "-t" and (p + 1 >= len(cmds) or cmds[p + 1] in ["-p", "-t"]):
+                        elif cmds[p] == "-t":
                             edit_account(cmds[1], taskfile="")
                             p += 1
                         else:
@@ -253,8 +250,6 @@ if __name__ == "__main__":
                     TaskEditor(cmds[2])
                 elif len(cmds) == 3 and cmds[1] == "-d":
                     del_task(cmds[2])
-                elif len(cmds) == 3 and cmds[1] == "-d" and cmds[2] == "-all":
-                    del_all_task()
                 else:
                     print("Wrong Order!")
             else:

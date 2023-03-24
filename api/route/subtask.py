@@ -8,12 +8,9 @@ subtask_api = Blueprint('subtask', __name__)
 
 @subtask_api.route('/subtask/schema', methods=['GET'])
 def list_subtask_schema():
-    res = []
     subtask_type: dict = VALID_TASK.T
 
-    for k, v in subtask_type.items():
-        res.append(parse_validate_task(k, v))
-
+    res = [parse_validate_task(k, v) for k, v in subtask_type.items()]
     return ListReply(res, len(res))
 
 

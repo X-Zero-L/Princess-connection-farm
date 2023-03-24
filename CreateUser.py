@@ -125,13 +125,10 @@ T = VALID_TASK.T
 
 def show_task_simple(ind, i):
     print(ind, ":", T[i["type"]]["title"], end="  ")
-    if "__disable__" in i:
-        if i["__disable__"] is True:
-            print("（禁用）")
-        elif i["__disable__"] is not False:
-            print("（禁用当：", i["__disable__"], "）")
-        else:
-            print()
+    if "__disable__" in i and i["__disable__"] is True:
+        print("（禁用）")
+    elif "__disable__" in i and i["__disable__"] is not False:
+        print("（禁用当：", i["__disable__"], "）")
     else:
         print()
 
@@ -225,10 +222,7 @@ def TaskEditor(taskname):
                 obj = {"tasks": []}
                 is_edited = '*'
             elif order == "list":
-                if len(cmds) > 1:
-                    tag = cmds[1].lstrip("-")
-                else:
-                    tag = ""
+                tag = cmds[1].lstrip("-") if len(cmds) > 1 else ""
                 for i in T:
                     if i.startswith(tag):
                         print(i, "  ：  ", T[i]["title"])
@@ -332,7 +326,7 @@ def create_account_from_file(file):
 
 
 def del_account(account):
-    target = "%s/%s.json" % (user_addr, account)
+    target = f"{user_addr}/{account}.json"
     if os.path.exists(target):
         os.remove(target)
 
@@ -369,7 +363,7 @@ def create_task(TaskName):
 
 
 def del_task(TaskName):
-    target = "%s/%s.json" % (task_addr, TaskName)
+    target = f"{task_addr}/{TaskName}.json"
     if os.path.exists(target):
         os.remove(target)
 
@@ -384,9 +378,7 @@ def show_group(GroupName, all_group=False):
     users = list_all_users(0)
     if all_group:
         groups = list_all_groups(0)
-        detailed_group = {}
-        for g in groups:
-            detailed_group[g] = AutomatorRecorder.getgroup(g)
+        detailed_group = {g: AutomatorRecorder.getgroup(g) for g in groups}
     for i in gp:
         if i in users:
             print(i, end=" ")
@@ -487,7 +479,42 @@ def edit_batch(BatchName):
             cmd = input(f"Batch[{BatchName}]{is_edited}> ")
             cmds = cmd.split(" ")
             order = cmds[0]
-            if order == "help":
+            if order == "add":
+                if len(cmds) in {4, 5} and cmds[1] == '-g':
+                    task = cmds[3]
+                    group = cmds[2]
+                    priority = int(cmds[4]) if len(cmds) == 5 else 0
+                    obj["batch"] += [dict(group=group, taskfile=task, priority=priority)]
+                    is_edited = '*'
+                elif len(cmds) == 3 and cmds[1] == "-file":
+                    with open(cmds[2], "r", encoding="utf-8") as f:
+                        for line in f:
+                            cur = line.strip()
+                            curs = cur.split(" ")
+                            assert len(curs) in {3, 4}
+                            assert curs[0] in ['A', 'G']
+                            d = {'priority': 0 if len(curs) == 3 else int(curs[3])}
+                            if curs[0] == 'A':
+                                d['account'] = curs[1]
+                            elif curs[0] == 'G':
+                                d['group'] = curs[1]
+                            d['taskfile'] = curs[2]
+                            obj["batch"] += d
+                    is_edited = '*'
+                elif len(cmds) in {3, 4}:
+                    task = cmds[2]
+                    priority = int(cmds[3]) if len(cmds) == 4 else 0
+                    account = cmds[1]
+                    obj["batch"] += [dict(account=account, taskfile=task, priority=priority)]
+                    is_edited = '*'
+                else:
+                    print("add命令有误！")
+            elif order == "clear":
+                obj = {"batch": []}
+                is_edited = '*'
+            elif order == "exit":
+                return
+            elif order == "help":
                 print("add account task [priority=0]")
                 print("    增加一个优先级为priority的account做task的任务")
                 print("add -g group task [priority=0]")
@@ -502,30 +529,9 @@ def edit_batch(BatchName):
                 print("帮助： help  退出： exit  保存：save  重载：load 重写： clear")
                 print("什么是batch:  what")
                 print("== 一定记住：先保存，再退出！！==")
-            elif order == "what":
-                print("batch，批配置，为一系列X执行X的任务集合。")
-                print("这可以是用户执行任务(account - task)，也可以是组执行任务(group - task)")
-                print("每一个batch间的运行记录相互独立。对于同一个用户，在不同的两个batch中执行相同或"
-                      "不同的任务时，各自的任务进度会被分别保留。")
-                print("使用batch的好处在于将用户与任务脱钩，如果对于同一个用户需要频繁执行不同的任务，"
-                      "则只需要制定两个独立的batch即可。这在40to1或早晚任务中非常有效。")
-                print("在一个batch中可以给不同的任务指定优先级.同优先级任务会同批次完成，而高"
-                      "优先级任务会优先进行。单开时，必然先执行高优先级任务，再执行低优先级任务，"
-                      "但多开时，如果有空闲的设备，也可能高优先级任务和低优先级任务同时执行。")
-                print("默认的优先级为0，也就是最低优先级，对于某些特殊任务（如大号的任务），可以调高优先级。")
-            elif order == "exit":
-                return
-            elif order == "save":
-                AutomatorRecorder.setbatch(BatchName, obj)
-                is_edited = ''
             elif order == "load":
                 obj = AutomatorRecorder.getbatch(BatchName)
                 is_edited = ''
-            elif order == "clear":
-                obj = {"batch": []}
-                is_edited = '*'
-            elif order == "show":
-                print_batch(obj)
             elif order == "random":
                 if len(cmds) >= 3:
                     ind = int(cmds[2])
@@ -539,46 +545,22 @@ def edit_batch(BatchName):
                         print("只能输入enable或者disable！")
                 else:
                     print("random命令有误！")
-            elif order == "add":
-                if len(cmds) in [4, 5] and cmds[1] == '-g':
-                    group = cmds[2]
-                    task = cmds[3]
-                    if len(cmds) == 5:
-                        priority = int(cmds[4])
-                    else:
-                        priority = 0
-                    obj["batch"] += [dict(group=group, taskfile=task, priority=priority)]
-                    is_edited = '*'
-                elif len(cmds) == 3 and cmds[1] == "-file":
-                    with open(cmds[2], "r", encoding="utf-8") as f:
-                        for line in f:
-                            cur = line.strip()
-                            curs = cur.split(" ")
-                            assert len(curs) in [3, 4]
-                            assert curs[0] in ['A', 'G']
-                            d = {}
-                            if len(curs) == 3:
-                                d['priority'] = 0
-                            else:
-                                d['priority'] = int(curs[3])
-                            if curs[0] == 'A':
-                                d['account'] = curs[1]
-                            elif curs[0] == 'G':
-                                d['group'] = curs[1]
-                            d['taskfile'] = curs[2]
-                            obj["batch"] += d
-                    is_edited = '*'
-                elif len(cmds) in [3, 4]:
-                    account = cmds[1]
-                    task = cmds[2]
-                    if len(cmds) == 4:
-                        priority = int(cmds[3])
-                    else:
-                        priority = 0
-                    obj["batch"] += [dict(account=account, taskfile=task, priority=priority)]
-                    is_edited = '*'
-                else:
-                    print("add命令有误！")
+            elif order == "save":
+                AutomatorRecorder.setbatch(BatchName, obj)
+                is_edited = ''
+            elif order == "show":
+                print_batch(obj)
+            elif order == "what":
+                print("batch，批配置，为一系列X执行X的任务集合。")
+                print("这可以是用户执行任务(account - task)，也可以是组执行任务(group - task)")
+                print("每一个batch间的运行记录相互独立。对于同一个用户，在不同的两个batch中执行相同或"
+                      "不同的任务时，各自的任务进度会被分别保留。")
+                print("使用batch的好处在于将用户与任务脱钩，如果对于同一个用户需要频繁执行不同的任务，"
+                      "则只需要制定两个独立的batch即可。这在40to1或早晚任务中非常有效。")
+                print("在一个batch中可以给不同的任务指定优先级.同优先级任务会同批次完成，而高"
+                      "优先级任务会优先进行。单开时，必然先执行高优先级任务，再执行低优先级任务，"
+                      "但多开时，如果有空闲的设备，也可能高优先级任务和低优先级任务同时执行。")
+                print("默认的优先级为0，也就是最低优先级，对于某些特殊任务（如大号的任务），可以调高优先级。")
             else:
                 print("不认识的命令。")
         except Exception as e:
@@ -591,7 +573,7 @@ def create_schedule(ScheduleName):
 
 
 def del_schedule(ScheduleName):
-    target = "%s/%s.txt" % (schedule_addr, ScheduleName)
+    target = f"{schedule_addr}/{ScheduleName}.txt"
     if os.path.exists(target):
         os.remove(target)
 
@@ -600,28 +582,22 @@ def _show_schedule(obj):
     FLAGS = list_all_flags()
     for ind, i in enumerate(obj["schedules"]):
         if i["type"] != "config":
-            if "__disable__" in i:
-                if i["__disable__"] is True:
-                    print("ID", ind, "NAME", i["name"], "已禁用")
+            if "__disable__" in i and i["__disable__"] is True:
+                print("ID", ind, "NAME", i["name"], "已禁用")
+                continue
+            elif "__disable__" in i and i["__disable__"] is not False:
+                print("ID", ind, "NAME", i["name"], "禁用当：", i["__disable__"], end=" ")
+                tmp = False
+                for flag, detail in FLAGS.items():
+                    if flag == i["__disable__"] and detail["default"] is True:
+                        print("已禁用")
+                        tmp = True
+                    break
+                if tmp:
                     continue
-                elif i["__disable__"] is not False:
-                    print("ID", ind, "NAME", i["name"], "禁用当：", i["__disable__"], end=" ")
-                    tmp = False
-                    for flag, detail in FLAGS.items():
-                        if flag == i["__disable__"] and detail["default"] is True:
-                            print("已禁用")
-                            tmp = True
-                            break
-                        else:
-                            break
-                    if tmp:
-                        continue
 
-                else:
-                    print("ID", ind, "NAME", i["name"], end=" ")
             else:
                 print("ID", ind, "NAME", i["name"], end=" ")
-
         if i["type"] in ["asap", "wait"]:
             if i["type"] == "asap":
                 print("：** 立即执行 **")
@@ -656,8 +632,7 @@ def show_schedule(ScheduleName):
 
 
 def _edit_asap_wait_config(typ):
-    obj = {}
-    obj["type"] = typ
+    obj = {"type": typ}
     mode = ""
     if typ in ["asap", "wait"]:
         while True:
@@ -680,7 +655,7 @@ def _edit_asap_wait_config(typ):
             print("-- 批配置文件 --")
             I = input("请输入批配置文件：").strip()
             obj[mode] = I
-        if mode == "batchlist":
+        elif mode == "batchlist":
             print("-- 批配置列表 --")
             print("请输入一系列批配置文件")
             print("它们将依次执行，且两批之间不共享进度。")
@@ -745,10 +720,9 @@ def _edit_asap_wait_config(typ):
 
 
 def _get_subschedule_id(obj, name):
-    for i, s in enumerate(obj["schedules"]):
-        if s["name"] == name:
-            return i
-    return -1
+    return next(
+        (i for i, s in enumerate(obj["schedules"]) if s["name"] == name), -1
+    )
 
 def edit_schedule(ScheduleName):
     print(f"Schedule编辑器  当前文件：  {ScheduleName}")
@@ -896,9 +870,8 @@ def show_flag(all=False):
 
 def _add_switch():
     print("请输入要设置的flag的名称，多个flag间用单个空格隔开。")
-    obj = {}
     flags_str = input("> ")
-    obj["flags"] = flags_str.split(" ")
+    obj = {"flags": flags_str.split(" ")}
     print("请输入默认激活状态")
     obj["default"] = BoolInputer().create()
     obj["user"] = {}
