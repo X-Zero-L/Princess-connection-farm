@@ -17,9 +17,6 @@ class RoutineMixin(ShuatuBaseMixin):
     """
 
     def gonghuizhijia(self, auto_update=False):  # 家园领取
-        # 2020-07-31 TheAutumnOfRice: 检查完毕
-        # 2020-09-09 CyiceK: 添加升级
-        jiaju_list = ["saodangquan", "mana", "jingyan", "tili"]
         self.lock_home()
         self.lock_img(JIAYUAN_BTN["quanbushouqu"], elseclick=MAIN_BTN["gonghuizhijia"], side_check=self.juqing_kkr,
                       elsedelay=1)
@@ -36,6 +33,9 @@ class RoutineMixin(ShuatuBaseMixin):
         self.start_shuatu()
         if auto_update:
             i = 0
+            # 2020-07-31 TheAutumnOfRice: 检查完毕
+            # 2020-09-09 CyiceK: 添加升级
+            jiaju_list = ["saodangquan", "mana", "jingyan", "tili"]
             while i <= 3:
                 screen_shot = self.getscreen()
                 if self.click_img(img="img/jiayuan/jiayuan_shengji.bmp", screen=screen_shot):
@@ -51,12 +51,12 @@ class RoutineMixin(ShuatuBaseMixin):
                     time.sleep(3)
                     if self.is_exists(JIAYUAN_BTN["dengjitisheng"], is_black=True, black_threshold=1300):
                         self.lock_img(JIAYUAN_BTN["zhuye"], elseclick=[(1, 1)], retry=3)
-                        i = i + 1
+                        i += 1
                         continue
                     elif self.is_exists(JIAYUAN_BTN["dengjitisheng"]):
                         self.click_btn(JIAYUAN_BTN["dengjitisheng"], until_disappear=JIAYUAN_BTN["dengjitisheng"],
                                        retry=2)
-                i = i + 1
+                i += 1
                 continue
 
         self.lock_home()
@@ -186,9 +186,12 @@ class RoutineMixin(ShuatuBaseMixin):
         # 2020-08-06 TheAutumnOfRice: 检查完毕
         self.lock_home()
         self.click_btn(MAIN_BTN["liwu"], until_appear=LIWU_BTN["shouqulvli"], retry=8)
-        state = self.lock_img({LIWU_BTN["yijianshouqu"]: True, LIWU_BTN["meiyouliwu"]: False},
-                              elseclick=LIWU_BTN["quanbushouqu"], retry=2, elsedelay=8)
-        if state:
+        if state := self.lock_img(
+            {LIWU_BTN["yijianshouqu"]: True, LIWU_BTN["meiyouliwu"]: False},
+            elseclick=LIWU_BTN["quanbushouqu"],
+            retry=2,
+            elsedelay=8,
+        ):
             s = self.lock_img({LIWU_BTN["shouqule"]: 1, LIWU_BTN["chiyoushangxian"]: 2},
                               elseclick=LIWU_BTN["ok"], elsedelay=8)
             if s == 1:
@@ -205,9 +208,17 @@ class RoutineMixin(ShuatuBaseMixin):
         # 2020-08-06 TheAutumnOfRice: 检查完毕
         self.lock_home()
         self.click_btn(MAIN_BTN["renwu"], until_appear=RENWU_BTN["renwutip"])
-        state = self.lock_img({RENWU_BTN["quanbushouqu"]: True, RENWU_BTN["quanbushouqu_off"]: False},
-                              alldelay=1, method="sq", threshold=0.90, is_raise=False, timeout=10)
-        if state:
+        if state := self.lock_img(
+            {
+                RENWU_BTN["quanbushouqu"]: True,
+                RENWU_BTN["quanbushouqu_off"]: False,
+            },
+            alldelay=1,
+            method="sq",
+            threshold=0.90,
+            is_raise=False,
+            timeout=10,
+        ):
             # 全部收取亮着
             self.click_btn(RENWU_BTN["quanbushouqu"], until_appear=RENWU_BTN["guanbi"], elsedelay=5, timeout=10,
                            is_raise=False)
@@ -386,7 +397,7 @@ class RoutineMixin(ShuatuBaseMixin):
         self.AR.set("time_status", ts)
         self.lock_home()
 
-    def tansuo(self, mode=0):  # 探索函数
+    def tansuo(self, mode=0):    # 探索函数
         """
         mode 0: 刷最上面的
         mode 1: 刷次上面的
@@ -427,7 +438,7 @@ class RoutineMixin(ShuatuBaseMixin):
         else:
             if mode >= 2:
                 self.shoushuazuobiao(704, 152, lockpic='img/fanhui.bmp', screencut=(16, 12, 54, 48))
-            if mode == 0 or mode == 3:
+            if mode in [0, 3]:
                 self.click(704, 152)  # 5级
             else:
                 self.click(707, 265)  # 倒数第二
@@ -452,7 +463,7 @@ class RoutineMixin(ShuatuBaseMixin):
                         self.click(590, 363)  # ok
                         time.sleep(0.5)
                         break
-            if is_used == 1:
+            elif is_used == 1:
                 self.click(36, 32)  # back
                 time.sleep(1)
             is_used = 0
@@ -467,7 +478,7 @@ class RoutineMixin(ShuatuBaseMixin):
             time.sleep(3)
             if mode >= 2:
                 self.shoushuazuobiao(704, 152, lockpic='img/fanhui.bmp', screencut=(16, 12, 54, 48))
-            if mode == 0 or mode == 3:
+            if mode in [0, 3]:
                 self.click(704, 152)  # 5级
             else:
                 self.click(707, 265)  # 倒数第二
@@ -492,7 +503,7 @@ class RoutineMixin(ShuatuBaseMixin):
                         self.click(590, 363)  # ok
                         time.sleep(0.5)
                         break
-            if is_used == 1:
+            elif is_used == 1:
                 self.click(36, 32)  # back
                 time.sleep(1)
             is_used = 0
@@ -601,10 +612,7 @@ class RoutineMixin(ShuatuBaseMixin):
         T = self.get_zhuye().goto_maoxian().goto_tansuo()
 
         def tansuo_fun(m):
-            if m == "J":
-                J = T.goto_jingyan()
-            else:  # m=="M"
-                J = T.goto_mana()
+            J = T.goto_jingyan() if m == "J" else T.goto_mana()
             while True:
                 L = J.get_cishu_left()
                 if L > 0:

@@ -46,8 +46,7 @@ class Emulator(object):
         # 2: never tips
         # 1: tip when unknown emulator found
         # 0: tip when known emulator port change and unknown emulator found
-        self.upload_tip_level = \
-            d.get('upload_tip_level') if d.get('upload_tip_level') else 0
+        self.upload_tip_level = d.get('upload_tip_level') or 0
 
 
 def get_processes(emulator):
@@ -69,6 +68,8 @@ def check_adb_connectable_by_ports(ports, auto_disconnect=True):
     for port in ports:
         ports_queue.put(port)
 
+
+
     class connectPort(threading.Thread):
         def __init__(self, ports_queue, devices_queue):
             threading.Thread.__init__(self)
@@ -77,12 +78,13 @@ def check_adb_connectable_by_ports(ports, auto_disconnect=True):
 
         def run(self) -> None:
             port_now = self.ports_queue.get()
-            device_now = "%s:%s" % (emulator_ip, port_now)
+            device_now = f"{emulator_ip}:{port_now}"
             sh(f"cd {adb_dir} && adb connect {device_now}", timeout=1)
             self.devices_queue.put(device_now)
 
+
     connet_thread_list = []
-    for i in range(ports_len):
+    for _ in range(ports_len):
         t = connectPort(ports_queue=ports_queue, devices_queue=devices_queue)
         t.start()
         connet_thread_list.append(t)
@@ -92,7 +94,7 @@ def check_adb_connectable_by_ports(ports, auto_disconnect=True):
 
     result = check_adb_connected(devices_queue)
     if auto_disconnect:
-        for i in range(devices_queue.qsize()):
+        for _ in range(devices_queue.qsize()):
             device = devices_queue.get()
             os.system(f"cd {adb_dir} && adb disconnect {device}")
     ports = [int(x.split(':')[1]) for x in result]
@@ -104,23 +106,18 @@ def sh(command, print_msg=True, timeout=0):
     p = subprocess.Popen(
         command, shell=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, close_fds=True, start_new_session=True)
 
-    format = 'utf-8'
-    if platform.system() == "Windows":
-        format = 'gbk'
-
+    format = 'gbk' if platform.system() == "Windows" else 'utf-8'
     try:
         if timeout != 0:
             (result, errs) = p.communicate(timeout=timeout)
         else:
             (result, errs) = p.communicate()
-        ret_code = p.poll()
-        if ret_code:
+        if ret_code := p.poll():
             code = 1
-            result = "[Error]Called Error ： " + str(result.decode(format))
+            result = f"[Error]Called Error ： {str(result.decode(format))}"
         else:
             code = 0
             result = str(result.decode(format))
-            # print(result)
     except subprocess.TimeoutExpired:
         # 注意：不能只使用p.kill和p.terminate，无法杀干净所有的子进程，需要使用os.killpg
         p.kill()
@@ -133,10 +130,10 @@ def sh(command, print_msg=True, timeout=0):
         # print(outs.decode('utf-8'))
 
         code = 1
-        result = "[ERROR]Timeout Error : Command '" + command + "' timed out after " + str(timeout) + " seconds"
+        result = f"[ERROR]Timeout Error : Command '{command}' timed out after {str(timeout)} seconds"
     except Exception as e:
         code = 1
-        result = "[ERROR]Unknown Error : " + str(e)
+        result = f"[ERROR]Unknown Error : {str(e)}"
 
     return result
 
@@ -145,7 +142,7 @@ def check_adb_connected(devices_queue):
     # check if device is active
     active_result = sh(f"cd {adb_dir}adb && devices", print_msg=False)
     connected_devices = []
-    for i in range(devices_queue.qsize()):
+    for _ in range(devices_queue.qsize()):
         device = devices_queue.get()
         devices_queue.put(device)
         if re.search(r"%s\s+device" % (device), active_result):
@@ -166,9 +163,9 @@ def get_ports(emulator):
     ports = []
     if 1 <= len(ps) <= len(emulator.default_ports):
         for default_port in emulator.default_ports:
-            result = check_adb_connectable_by_port(
-                default_port, auto_disconnect=False)
-            if result:
+            if result := check_adb_connectable_by_port(
+                default_port, auto_disconnect=False
+            ):
                 ports.append(default_port)
     if ports:
         return ports
@@ -227,7 +224,7 @@ def get_process_unique_id(p):
         relative_path = path
     except (PermissionError, psutil.AccessDenied):
         pass
-    return "%s/%s" % (relative_path, p.name())
+    return f"{relative_path}/{p.name()}"
 
 
 def get_port(PID, re_rules=None):
@@ -254,7 +251,7 @@ def get_port(PID, re_rules=None):
         # print(cd[-1])
         # print(cd[0])
 
-        if (i < len(first_line)-1) and (cd[-1] == "0.0.0.0" or cd[-1] == "127.0.0.1"):
+        if i < len(first_line) - 1 and cd[-1] in ["0.0.0.0", "127.0.0.1"]:
             # print(cd[0])
             try:
                 if not emulators_port_interval[0] >= int(cd[0]) >= emulators_port_interval[1]:
@@ -271,8 +268,13 @@ def get_port(PID, re_rules=None):
                     continue
 
             else:
-                adb_connect_info = os.popen(f' cd {adb_dir} & adb connect ' + emulator_ip + ':' + str(cd[0])).read().split(
-                    ' ')
+                adb_connect_info = (
+                    os.popen(
+                        f' cd {adb_dir} & adb connect {emulator_ip}:{str(cd[0])}'
+                    )
+                    .read()
+                    .split(' ')
+                )
                 error_str = ["failed", "10068"]
                 # print(adb_connect_info)
                 # if "failed" in os.popen(f' cd {adb_dir} & adb connect ' + emulator_ip + ':' + str(cd[0])).read().split(
@@ -286,24 +288,23 @@ def get_port(PID, re_rules=None):
                 # os.system("taskkill /im adb.exe /f")
                 # print(adb_connect_info)
                 if error_str in adb_connect_info:
-                    _log.write_log(level='error', message=f"连接模拟器[{emulator_ip2 + ':' + str(cd[0])}]失败，"
-                                                                      f"不是这个模拟器,继续查找中...")
+                    _log.write_log(
+                        level='error',
+                        message=f"连接模拟器[{f'{emulator_ip2}:{str(cd[0])}'}]失败，不是这个模拟器,继续查找中...",
+                    )
                     i += 1
                     continue
 
             if emulators_port_interval[0] >= int(cd[0]) >= emulators_port_interval[1]:
                 # print(cd)
-                if emulators_port_list:
-                    if int(cd[0]) in emulators_port_list:
-                        por = cd[0]
-                        # print("1-",por)
-                        break
-                    else:
-                        break
-                else:
+                if (
+                    emulators_port_list
+                    and int(cd[0]) in emulators_port_list
+                    or not emulators_port_list
+                ):
                     por = cd[0]
-                    # print(por)
-                    break
+                # print("1-",por)
+                break
         elif i < len(first_line)-1:
             i += 1
         else:
@@ -333,29 +334,18 @@ def check_known_emulators():
                 # result = get_ports(e)
                 ps = get_processes(e)
                 # print(ps)
-                if one_way_search_auto_find_emulator:
-                    if not result:
-                        for i in range(0, len(ps)):
-                            if ps[i].status() == "stopped":
-                                # print("进程不存活")
-                                continue
-                            if str(get_port(ps[i].pid, e.re_port)) not in result:
-                                _log.write_log('info',"检测到【" + e.name + "】模拟器")
-                                result.append(get_port(ps[i].pid, e.re_port))
-                else:
-                    for i in range(0, len(ps)):
+                if (
+                    one_way_search_auto_find_emulator
+                    and not result
+                    or not one_way_search_auto_find_emulator
+                ):
+                    for i in range(len(ps)):
                         if ps[i].status() == "stopped":
                             # print("进程不存活")
                             continue
                         if str(get_port(ps[i].pid, e.re_port)) not in result:
-                            _log.write_log('info',"检测到【" + e.name + "】模拟器")
+                            _log.write_log('info', f"检测到【{e.name}】模拟器")
                             result.append(get_port(ps[i].pid, e.re_port))
-                            # print(result)
-                        # result = [5565]
-                        # a = get_processes(e)
-                        # print(port(24664))
-                        # print(a)
-                        # print(result)
                 if result:
                     if not emulators.get(e.unique_id):
                         emulators[e.unique_id] = copy.deepcopy(e)
@@ -364,7 +354,7 @@ def check_known_emulators():
                     ischanged = is_known_port_changed(
                         e, emulators[e.unique_id].default_ports)
     result_ports = []
-    for i, j in emulators.items():
+    for j in emulators.values():
         result_ports += j.default_ports
     # return ischanged, emulators.values()
     # return emulators

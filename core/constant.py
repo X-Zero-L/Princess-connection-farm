@@ -30,16 +30,10 @@ class PCRelement:
 
     def __repr__(self):
         s1 = f"({self.x},{self.y})"
-        s2 = ""
-        s3 = ""
-        s4 = ""
-        if self.name is not None:
-            s2 = "  name= %s" % self.name
-        if self.img is not None:
-            s3 = "  img= %s" % self.img
-        if self.at is not None:
-            s4 = "  at = %s" % self.at.__str__()
-        return "%s%s%s%s" % (s1, s2, s3, s4)
+        s2 = f"  name= {self.name}" if self.name is not None else ""
+        s3 = f"  img= {self.img}" if self.img is not None else ""
+        s4 = f"  at = {self.at.__str__()}" if self.at is not None else ""
+        return f"{s1}{s2}{s3}{s4}"
 
 
 def p(x=None, y=None, name=None, img=None, at=None, **kwargs):

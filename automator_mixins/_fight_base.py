@@ -169,10 +169,7 @@ class FightBaseMixin(ToolsMixin):
             2: FIGHT_BTN["speed_2"],
         }
         out = self.check_dict_id(SPEED_DICT, screen, max_retry=max_retry)
-        if out is None:
-            return -1
-        else:
-            return out
+        return -1 if out is None else out
 
     @DEBUG_RECORD
     def set_fight_speed(self, level, max_level=1, screen=None, max_retry=3) -> bool:
@@ -195,13 +192,12 @@ class FightBaseMixin(ToolsMixin):
                 raise RetryNow()
             if out == level:
                 return True
-            else:
-                while out != level:
-                    self.click(FIGHT_BTN["speed_0"], post_delay=0.2)
-                    out = (out + 1) % (max_level + 1)
-                time.sleep(1.3)  # 防止涟漪
-                screen = self.getscreen()
-                raise ContinueNow()
+            while out != level:
+                self.click(FIGHT_BTN["speed_0"], post_delay=0.2)
+                out = (out + 1) % (max_level + 1)
+            time.sleep(1.3)  # 防止涟漪
+            screen = self.getscreen()
+            raise ContinueNow()
 
         return fun()
 
@@ -221,10 +217,7 @@ class FightBaseMixin(ToolsMixin):
             1: FIGHT_BTN["auto_on"],
         }
         out = self.check_dict_id(AUTO_DICT, screen, max_retry=max_retry)
-        if out is None:
-            return -1
-        else:
-            return out
+        return -1 if out is None else out
 
     @DEBUG_RECORD
     def set_fight_auto(self, auto, screen=None, max_retry=3) -> bool:
@@ -246,10 +239,9 @@ class FightBaseMixin(ToolsMixin):
                 raise RetryNow()
             if out == auto:
                 return True
-            else:
-                self.click(FIGHT_BTN["auto_on"], post_delay=1.5)  # 避免涟漪影响
-                screen = self.getscreen()
-                raise ContinueNow()
+            self.click(FIGHT_BTN["auto_on"], post_delay=1.5)  # 避免涟漪影响
+            screen = self.getscreen()
+            raise ContinueNow()
 
         return fun()
 
@@ -267,11 +259,10 @@ class FightBaseMixin(ToolsMixin):
         self.click_btn(FIGHT_BTN["my_team"], until_disappear=FIGHT_BTN["zhandoukaishi"])
         self.click(FIGHT_BTN["team_h"][bianzu], pre_delay=1, post_delay=1)
         self.click(FIGHT_BTN["team_v"][duiwu], pre_delay=1, post_delay=1)
-        if not self.is_exists(JJC_BTN["dwbz"]):
-            self.lock_img(JJC_BTN["dwbz"], elseclick=(477, 493), timeout=20)
-            return False
-        else:
+        if self.is_exists(JJC_BTN["dwbz"]):
             return True
+        self.lock_img(JJC_BTN["dwbz"], elseclick=(477, 493), timeout=20)
+        return False
 
     @DEBUG_RECORD
     def get_fight_current_member_count(self, screen=None):
@@ -281,14 +272,11 @@ class FightBaseMixin(ToolsMixin):
         :return: int 0~5
         """
         count_live = 5
-        if screen is None:
-            sc = self.getscreen()
-        else:
-            sc = screen
+        sc = self.getscreen() if screen is None else screen
         for i in range(1, 6):
             cur = UIMatcher.img_cut(sc, FIGHT_BTN["empty"][i].at)
             if debug:
-                self.log.write_log('debug', "std: " + str(i) + str(cur.std()))
+                self.log.write_log('debug', f"std: {str(i)}{str(cur.std())}")
             if cur.std() <= 15:
                 count_live -= 1
         return count_live

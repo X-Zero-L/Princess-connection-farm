@@ -27,10 +27,10 @@ class CaptionSkip:
         self.conversation.keep_alive = False
         self.conversation.mount('http://', HTTPAdapter(max_retries=2))
         self.conversation.mount('https://', HTTPAdapter(max_retries=2))
-        self.img_post_url = 'http://' + self.host_result + '/UploadBase64.aspx'
-        self.img_answer = 'http://' + self.host_result + '/GetAnswer.aspx'
-        self.img_send_error = 'http://' + self.host_result + '/SendError.aspx'
-        self.img_getpoint = 'http://' + self.host_result + '/GetPoint.aspx'
+        self.img_post_url = f'http://{self.host_result}/UploadBase64.aspx'
+        self.img_answer = f'http://{self.host_result}/GetAnswer.aspx'
+        self.img_send_error = f'http://{self.host_result}/SendError.aspx'
+        self.img_getpoint = f'http://{self.host_result}/GetPoint.aspx'
         self.error_feature = ['#', '', ' ']
         self.no_result = ["#答案不确定", "#超时", "不扣分", "#", '#编号不存在', '#Tid不正确(#题分不足)']
         self.img_hear_dict = {
@@ -55,19 +55,32 @@ class CaptionSkip:
                     self.host_result = self.host_result.split("--")
 
                 if num == 1:
-                    # 如果num为1，证明出现了Max retries exceeded with url，最大连接数错误，换下备用的
-                    if self.conversation.get(('http://' + self.host_result[1])).status_code == 200:
-                        self.host_result = self.host_result[1]
-                        break
-                    else:
+                    if (
+                        self.conversation.get(
+                            f'http://{self.host_result[1]}'
+                        ).status_code
+                        != 200
+                    ):
                         continue
 
+                    self.host_result = self.host_result[1]
+                    break
                 # print(host_result)
-                if self.conversation.get(('http://' + self.host_result[0]), timeout=(0.8, 0.5)).status_code == 200:
+                if (
+                    self.conversation.get(
+                        f'http://{self.host_result[0]}', timeout=(0.8, 0.5)
+                    ).status_code
+                    == 200
+                ):
                     # print("host_result[0] 200")
                     self.host_result = self.host_result[0]
                     break
-                elif self.conversation.get(('http://' + self.host_result[1]), timeout=(0.8, 0.5)).status_code == 200:
+                elif (
+                    self.conversation.get(
+                        f'http://{self.host_result[1]}', timeout=(0.8, 0.5)
+                    ).status_code
+                    == 200
+                ):
                     self.host_result = self.host_result[1]
                     # print("host_result[1] 200")
                     break
@@ -75,10 +88,10 @@ class CaptionSkip:
                     # print("无结果", host_result)
                     time.sleep(2)
                     continue
-            self.img_post_url = 'http://' + self.host_result + '/UploadBase64.aspx'
-            self.img_answer = 'http://' + self.host_result + '/GetAnswer.aspx'
-            self.img_send_error = 'http://' + self.host_result + '/SendError.aspx'
-            self.img_getpoint = 'http://' + self.host_result + '/GetPoint.aspx'
+            self.img_post_url = f'http://{self.host_result}/UploadBase64.aspx'
+            self.img_answer = f'http://{self.host_result}/GetAnswer.aspx'
+            self.img_send_error = f'http://{self.host_result}/SendError.aspx'
+            self.img_getpoint = f'http://{self.host_result}/GetPoint.aspx'
         except:
             time.sleep(1)
             return self.get_host(num=1)
@@ -149,7 +162,7 @@ class CaptionSkip:
             if str(answer_result.text) not in self.error_feature and str(answer_result.text) != "#答案不确定":
                 self._count_times += 1
                 # print("开始处理")
-                if question_type == "X6001" or question_type == "T6001":
+                if question_type in ["X6001", "T6001"]:
                     # 466,365
                     answer_result = answer_result.text.split(',')
                     # print(answer_result)
@@ -162,7 +175,7 @@ class CaptionSkip:
                         answer_result = [255, 439]
                         return answer_result, count_len, 0
                     return answer_result, count_len, caption_id.text
-                elif question_type == "X8006" or question_type == "T8006":
+                elif question_type in ["X8006", "T8006"]:
                     # 滑块
                     answer_result = answer_result.text.split(',')
                     if not (266 < int(answer_result[0]) < 696) and not (338 < int(answer_result[1]) < 434):
@@ -174,7 +187,7 @@ class CaptionSkip:
                         answer_result = [255, 439]
                         return answer_result, count_len, 0
                     return answer_result, count_len, caption_id.text
-                elif question_type == "X6004" or question_type == "T6004":
+                elif question_type in ["X6004", "T6004"]:
                     # 多坐标处理
                     # 464,364|551,376|506,271|390,233
                     answer_result = answer_result.text.split('|')

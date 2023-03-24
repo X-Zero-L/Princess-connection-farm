@@ -59,8 +59,11 @@ class pcr_log():  # 帐号内部日志（从属于每一个帐号）
 
         # 创建一个FileHandler，用于写到本地
         # maxBytes=1024 * 1024 * 5, backupCount=5,
-        self.fhbacker = RotatingFileHandler(filename=os.path.join(self.dst_folder, '%s.log' % acc),
-                                            mode='a+', encoding='utf-8')  # 使用RotatingFileHandler类，滚动备份日志
+        self.fhbacker = RotatingFileHandler(
+            filename=os.path.join(self.dst_folder, f'{acc}.log'),
+            mode='a+',
+            encoding='utf-8',
+        )
         self.fhbacker.setLevel('DEBUG')
         self.fhbacker.setFormatter(self.norm_fomatter)
 
@@ -80,25 +83,18 @@ class pcr_log():  # 帐号内部日志（从属于每一个帐号）
         #     self.norm_log.addHandler(self.fhbacker)
 
     def get_log_object(self, _name):
-        if logging.getLogger(_name):
-            return logging.getLogger(_name)
-        else:
-            return None
+        return logging.getLogger(_name) or None
 
     def exist_log_handles(self):
-        if self.norm_log.handlers:
-            return True
-        else:
-            return False
+        return bool(self.norm_log.handlers)
 
     def get_file_sorted(self, file_path):
         """最后修改时间顺序升序排列 os.path.getmtime()->获取文件最后修改时间"""
-        dir_list = os.listdir(file_path)
-        if not dir_list:
-            return
-        else:
+        if dir_list := os.listdir(file_path):
             dir_list = sorted(dir_list, key=lambda x: os.path.getmtime(os.path.join(file_path, x)))
             return dir_list
+        else:
+            return
 
     def TimeStampToTime(self, timestamp):
         """格式化时间"""
@@ -110,8 +106,7 @@ class pcr_log():  # 帐号内部日志（从属于每一个帐号）
         dir_list = ['log']  # 要删除文件的目录名
         for dir in dir_list:
             dirPath = os.path.abspath(os.path.dirname(os.path.dirname(__file__))) + '\\' + dir  # 拼接删除目录完整路径
-            file_list = self.get_file_sorted(dirPath)  # 返回按修改时间排序的文件list
-            if file_list:  # 目录下没有日志文件
+            if file_list := self.get_file_sorted(dirPath):
                 for i in file_list:
                     file_path = os.path.join(dirPath, i)  # 拼接文件的完整路径
                     t_list = self.TimeStampToTime(os.path.getctime(file_path)).split('-')
@@ -174,8 +169,7 @@ class pcr_log():  # 帐号内部日志（从属于每一个帐号）
             show_lineNumber = False
             show_fileName = False
 
-        pre_format = []
-        pre_format.append("[")
+        pre_format = ["["]
         if show_fileName:
             filename_str = os.path.split(fileName)[1]
             pre_format.append(f"{filename_str}")
@@ -186,10 +180,7 @@ class pcr_log():  # 帐号内部日志（从属于每一个帐号）
         if show_lineNumber:
             pre_format.append(f":{lineNumber}")
         pre_format.append("]")
-        if len(pre_format)==2:
-            pre_format_str = ""
-        else:
-            pre_format_str = "".join(pre_format)
+        pre_format_str = "" if len(pre_format)==2 else "".join(pre_format)
         if level == "debug" and not write_debug_to_log:
             print("DEBUG:",pre_format_str,message)
             return
@@ -236,12 +227,12 @@ class pcr_acc_log:  # 帐号日志（全局）
         global end_time
         end_time = time.time()
         _time = end_time - star_time
-        self.acc_log.info('帐号：' + ac + '成功登出.耗时%s' % _time)
+        self.acc_log.info(f'帐号：{ac}' + f'成功登出.耗时{_time}')
         acc_cout = acc_cout + 1
         # pcr_log(ac).server_bot('', message="账号信息：（单个模拟器）第%s个，%s账号完成任务,耗时%s" % (acc_cout, ac, _time))
 
     def Account_Login(self, ac):  # 帐号登陆记录
         global star_time
         star_time = time.time()
-        self.acc_log.info('帐号：' + ac + '成功登录.')
+        self.acc_log.info(f'帐号：{ac}成功登录.')
         # pcr_log('admin').server_bot('', message="账号信息：%s成功登陆\n" % ac)

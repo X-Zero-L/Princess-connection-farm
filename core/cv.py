@@ -9,14 +9,13 @@ from core import log_handler
 from core.pcr_config import debug, use_template_cache
 
 
-def cv_imread(file_path):  # 用于中文目录的imread函数
+def cv_imread(file_path):    # 用于中文目录的imread函数
     """
     项目地址:https://github.com/bbpp222006/Princess-connection
     作者：bbpp222006
     协议：MIT License
     """
-    cv_img = cv2.imdecode(np.fromfile(file_path, dtype=np.uint8), -1)
-    return cv_img
+    return cv2.imdecode(np.fromfile(file_path, dtype=np.uint8), -1)
 
 
 class UIMatcher:
@@ -34,15 +33,11 @@ class UIMatcher:
         协议：MIT License
         """
         trans_img = cv2.transpose(img)
-        new_img = cv2.flip(trans_img, 0)
-        return new_img
+        return cv2.flip(trans_img, 0)
 
     @staticmethod
     def AutoRotateClockWise90(img):
-        if img.shape[0] > img.shape[1]:
-            return UIMatcher.RotateClockWise90(img)
-        else:
-            return img
+        return UIMatcher.RotateClockWise90(img) if img.shape[0] > img.shape[1] else img
 
     @staticmethod
     def findpic(screen, template_paths=None):
@@ -105,10 +100,10 @@ class UIMatcher:
         if method == "sq":
             ans = cv2.matchTemplate(screen, template, cv2.TM_SQDIFF_NORMED)
             ans = 1 - ans
-            return ans
         else:
             ans = cv2.matchTemplate(screen, template, method)
-            return ans
+
+        return ans
 
     @classmethod
     def img_prob(cls, screen, template_path, at=None, method=cv2.TM_CCOEFF_NORMED) -> float:
@@ -131,8 +126,7 @@ class UIMatcher:
         if screen.mean() < 1:  # 纯黑色与任何图相关度为1
             return 0
         template = cls._get_template(template_path)
-        prob = UIMatcher.matchTemplate(screen, template, method).max()
-        return prob
+        return UIMatcher.matchTemplate(screen, template, method).max()
 
     @classmethod
     def _get_template(cls, template_path):
@@ -165,10 +159,7 @@ class UIMatcher:
         screen = cls.AutoRotateClockWise90(screen)
         template = cls._get_template(template_path)
         th, tw = template.shape[:2]  # rows->h, cols->w
-        if at is not None:
-            x1, y1, x2, y2 = at
-        else:
-            x1, y1, x2, y2 = 0, 0, 959, 539
+        x1, y1, x2, y2 = at if at is not None else (0, 0, 959, 539)
         screen = cls.img_cut(screen, (x1, y1, x2, y2))
         res = UIMatcher.matchTemplate(screen, template, method)
         l = []
@@ -194,10 +185,7 @@ class UIMatcher:
         screen = cls.AutoRotateClockWise90(screen)
         template = cls._get_template(template_path)
         th, tw = template.shape[:2]  # rows->h, cols->w
-        if at is not None:
-            x1, y1, x2, y2 = at
-        else:
-            x1, y1, x2, y2 = 0, 0, 959, 539
+        x1, y1, x2, y2 = at if at is not None else (0, 0, 959, 539)
         screen = cls.img_cut(screen, (x1, y1, x2, y2))
         res = UIMatcher.matchTemplate(screen, template, method)
         l = []
@@ -224,11 +212,13 @@ class UIMatcher:
         """
         cannykwargs.setdefault("threshold1", 100)
         cannykwargs.setdefault("threshold2", 200)
-        if output3D:
-            edges = np.stack([cv2.Canny(img[:, :, i], **cannykwargs) for i in range(3)], axis=-1)
-        else:
-            edges = cv2.Canny(img, **cannykwargs)
-        return edges
+        return (
+            np.stack(
+                [cv2.Canny(img[:, :, i], **cannykwargs) for i in range(3)], axis=-1
+            )
+            if output3D
+            else cv2.Canny(img, **cannykwargs)
+        )
 
     @classmethod
     def img_where(cls, screen, template_path, threshold=0.84, at=None, method=cv2.TM_CCOEFF_NORMED,
@@ -278,34 +268,30 @@ class UIMatcher:
                 # print("暗点:", black_num, "-img:", template_path)
                 if debug:
                     cls._log.write_log('debug', f"暗点:{black_num} -img:{template_path}")
-                if black_num > black_threshold:
-                    return True
-                else:
-                    return False
-
+                return black_num > black_threshold
             x = x1 + max_loc[0] + tw // 2
             y = y1 + max_loc[1] + th // 2
             if debug:
-                cls._log.write_log('debug', "{}--{}--({},{})".format(template_path, round(max_val, 3), x, y))
+                cls._log.write_log('debug', f"{template_path}--{round(max_val, 3)}--({x},{y})")
                 # cls._log.write_log(level='debug',
                 #                    message="{}--{}--({},{})".format(template_path, round(max_val, 3)
                 #                                                     , x, y))
                 if at is None:
-                    cls._log.write_log('debug', "{}  at=({}, {}, {}, {})".format(template_path, x1 + max_loc[0],
-                                                                                 y1 + max_loc[1],
-                                                                                 x1 + max_loc[0] + tw,
-                                                                                 y1 + max_loc[1] + th))
-                    # cls._log.write_log(level='debug',
-                    #                    message="{}  at=({}, {}, {}, {})".format(template_path, x1 + max_loc[0],
-                    #                                                             y1 + max_loc[1],
-                    #                                                             x1 + max_loc[0] + tw,
-                    #                                                             y1 + max_loc[1] + th))
+                    cls._log.write_log(
+                        'debug',
+                        f"{template_path}  at=({x1 + max_loc[0]}, {y1 + max_loc[1]}, {x1 + max_loc[0] + tw}, {y1 + max_loc[1] + th})",
+                    )
+                                # cls._log.write_log(level='debug',
+                                #                    message="{}  at=({}, {}, {}, {})".format(template_path, x1 + max_loc[0],
+                                #                                                             y1 + max_loc[1],
+                                #                                                             x1 + max_loc[0] + tw,
+                                #                                                             y1 + max_loc[1] + th))
             return x, y
         else:
             if debug:
-                cls._log.write_log('debug', "{}--{}".format(template_path, round(max_val, 3)))
-                # cls._log.write_log(level='debug',
-                #                            message="{}--{}".format(template_path, round(max_val, 3)))
+                cls._log.write_log('debug', f"{template_path}--{round(max_val, 3)}")
+                        # cls._log.write_log(level='debug',
+                        #                            message="{}--{}".format(template_path, round(max_val, 3)))
             return False
 
     @staticmethod
@@ -319,8 +305,9 @@ class UIMatcher:
         """
         return_dic = {}
         for template_path in template_paths:
-            pos = UIMatcher.img_where(screen, template_path, threshold, at, method)
-            if pos:
+            if pos := UIMatcher.img_where(
+                screen, template_path, threshold, at, method
+            ):
                 return_dic[template_path] = pos
         return return_dic
 
@@ -419,14 +406,10 @@ class PreProcesses:
     def sharpening(self, img):
         # 锐化处理，对文字可能伤害较大
         kernel = np.array([[0, -1, 0], [-1, 5, -1], [0, -1, 0]], np.float32)  # 锐化
-        part = cv2.filter2D(img, -1, kernel=kernel)
-        # part = cv2.GaussianBlur(part, (3, 3), 1)  # 高斯滤波
-        return part
+        return cv2.filter2D(img, -1, kernel=kernel)
 
     def gussian_blur(self, img):
-        # 高斯滤波，处理噪点
-        part = cv2.GaussianBlur(img, (3, 3), 1)  # 高斯滤波
-        return part
+        return cv2.GaussianBlur(img, (3, 3), 1)
 
     def __call__(self, img):
         if len(self.pp) > 0:

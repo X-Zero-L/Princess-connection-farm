@@ -10,23 +10,20 @@ import cv2
 def get_frag_img_path(charname):
     data = LoadPCRData()
     a = str(data.get_id(name=charname))
-    b = str("3" + a[0:4])
-    imgpath = "img/shop/frags/" + b + ".bmp"
-    return imgpath
+    b = str(f"3{a[:4]}")
+    return f"img/shop/frags/{b}.bmp"
 
 
 class ShopMixin(ToolsMixin):
 
     def show_coin(self, screen=None):
-        # 获取代币数量，用于判断是否足够购买
-        pass
         self.check_ocr_running()
         if screen is None:
             screen = self.getscreen()
         at = (789, 16, 918, 32)
         out = self.ocr_int(*at, screen_shot=screen)
         if debug:
-            self.log.write_log('debug',"持有代币：%s" % out)
+            self.log.write_log('debug', f"持有代币：{out}")
         return out
 
     def buy_press(self):
@@ -49,11 +46,11 @@ class ShopMixin(ToolsMixin):
         while True:
 
             if drag_count > 3:
-                if self.is_exists(SHOP_BTN["jiechusuoyou"]):
-                    if buy_count > 0:
-                        self.buy_press()
-                        return
-                else: return
+                if not self.is_exists(SHOP_BTN["jiechusuoyou"]):
+                    return
+                if buy_count > 0:
+                    self.buy_press()
+                    return
                 return
 
             for frag_ in fraglist[:]:
@@ -63,14 +60,11 @@ class ShopMixin(ToolsMixin):
                     buy_count += 1
                     fraglist.remove(frag_)
                     self.log.write_log('info',str(fraglist))
-                    if len(fraglist) == 0:
-                        if self.is_exists(SHOP_BTN["jiechusuoyou"]):
-                            self.buy_press()
-                            return
-                        else:
-                            return
-                    else:
+                    if len(fraglist) != 0:
                         continue
+                    if self.is_exists(SHOP_BTN["jiechusuoyou"]):
+                        self.buy_press()
+                    return
                 else:
                     self.dragdown()
                     time.sleep(3)
@@ -86,14 +80,11 @@ class ShopMixin(ToolsMixin):
                                      method=cv2.TM_CCOEFF_NORMED, is_black=False, black_threshold=1500)
         # r_list = self.img_where_all(img=imgpath, at=(241, 105, 925, 392))
         # 根据偏移，点击勾选碎片
-        if r_list is not False:
-            if len(r_list) == 2:
-                x_arg = int(r_list[0]) + 57
-                y_arg = int(r_list[1]) - 16
-                self.click(x_arg, y_arg)
-                return 0
-            else:
-                return 2
+        if r_list is not False and len(r_list) == 2:
+            x_arg = int(r_list[0]) + 57
+            y_arg = int(r_list[1]) - 16
+            self.click(x_arg, y_arg)
+            return 0
         else:
             return 2
 
@@ -115,9 +106,7 @@ class ShopMixin(ToolsMixin):
         time.sleep(1)
         coin = self.show_coin()
         a = len(dxc_fraglist)
-        if coin < 800 * a:
-            pass
-        else:
+        if coin >= 800 * a:
             self.tick_frag(fraglist=dxc_fraglist)
         self.log.write_log('info',"地下城购买完毕")
         time.sleep(2)
@@ -127,9 +116,7 @@ class ShopMixin(ToolsMixin):
         time.sleep(2)
         coin = self.show_coin()
         a = len(dxc_fraglist)
-        if coin < 800 * a:
-            pass
-        else:
+        if coin >= 800 * a:
             self.tick_frag(fraglist=jjc_fraglist)
         self.log.write_log('info',"JJC购买完毕")
         time.sleep(2)
@@ -139,9 +126,7 @@ class ShopMixin(ToolsMixin):
         time.sleep(2)
         coin = self.show_coin()
         a = len(dxc_fraglist)
-        if coin < 800 * a:
-            pass
-        else:
+        if coin >= 800 * a:
             self.tick_frag(fraglist=pjjc_fraglist)
         self.log.write_log('info',"PJJC购买完毕")
         time.sleep(2)
@@ -151,9 +136,7 @@ class ShopMixin(ToolsMixin):
         time.sleep(2)
         coin = self.show_coin()
         a = len(dxc_fraglist)
-        if coin < 800 * a:
-            pass
-        else:
+        if coin >= 800 * a:
             self.tick_frag(fraglist=clan_fraglist)
         self.log.write_log('info',"行会购买完毕")
         self.lock_home()

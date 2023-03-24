@@ -248,7 +248,6 @@ class ToolsMixin(BaseMixin):
             "saodangquan": 'None',
             "date": date,
         }
-        acc_info_list = []
         self.lock_home()
         if base_info:
             time.sleep(2)
@@ -263,20 +262,20 @@ class ToolsMixin(BaseMixin):
             if use_pcrocr_to_process_basic_text:
                 acc_info_dict["mana"] = make_it_as_number_as_possible(
                     self.ocr_center(107, 54, 177, 76, screen_shot=screen_shot,custom_ocr="pcr",allowstr="0123456789,") \
-                        .replace(',', ''))
+                            .replace(',', ''))
             else:
                 acc_info_dict["mana"] = make_it_as_number_as_possible(
                     self.ocr_center(107, 54, 177, 76, screen_shot=screen_shot, size=2.0) \
-                        .replace(',', '').replace('.', ''))
+                            .replace(',', '').replace('.', ''))
             # 宝石
             if use_pcrocr_to_process_basic_text:
                 acc_info_dict["baoshi"] = make_it_as_number_as_possible(
                     self.ocr_center(258, 52, 306, 72, screen_shot=screen_shot, custom_ocr="pcr",allowstr="0123456789,") \
-                        .replace(',', ''))
+                            .replace(',', ''))
             else:
                 acc_info_dict["baoshi"] = make_it_as_number_as_possible(
                     self.ocr_center(258, 52, 306, 72, screen_shot=screen_shot, size=2.0) \
-                        .replace(',', '').replace('.', ''))
+                            .replace(',', '').replace('.', ''))
         if introduction_info:
             self.lock_img(ZHUCAIDAN_BTN["bangzhu"], elseclick=[(871, 513)])  # 锁定帮助
             # 去简介
@@ -317,7 +316,7 @@ class ToolsMixin(BaseMixin):
                 sc = self.getscreen()
                 for p in P.iterdir():
                     p = str(p).replace('\\', '/')
-                    if p[-4:] == ".bmp":
+                    if p.endswith(".bmp"):
                         for area in at_list:
                             if self.is_exists(img=p, at=area, screen=sc):
                                 name = get_name_from_plate_path(p)
@@ -325,17 +324,13 @@ class ToolsMixin(BaseMixin):
 
                 if cm.check_buttom() is True:
                     break
-                else:
-                    cm.dragdown()
-                    if self.is_exists(JUESE_BTN["weijiesuo_w"], at=(21, 144, 167, 463)):
-                        break
-                    continue
-
+                cm.dragdown()
+                if self.is_exists(JUESE_BTN["weijiesuo_w"], at=(21, 144, 167, 463)):
+                    break
             out = ','.join(charlist)
             acc_info_dict["charlist"] = out
-        acc_info_list.append(acc_info_dict)
+        acc_info_list = [acc_info_dict]
         self.lock_home()
-            # 表格数据整理和转换
         if out_xls:
             # 将字典列表转换为DataFrame
             pf = pd.DataFrame(list(acc_info_list))
@@ -361,15 +356,12 @@ class ToolsMixin(BaseMixin):
             }
             pf.rename(columns=columns_map, inplace=True)
 
-            if acc_nature == 0:
-                # 小号/农场号输出格式
-                xls_path = 'xls/%s-pcr_farm_info.xlsx' % self.today_date
-            elif acc_nature == 1:
+            if acc_nature == 1:
                 # 大号统一文件格式
                 xls_path = 'xls/pcr_farm_info.xlsx'
             else:
                 # 乱输入就这样的格式
-                xls_path = 'xls/%s-pcr_farm_info.xlsx' % self.today_date
+                xls_path = f'xls/{self.today_date}-pcr_farm_info.xlsx'
 
             # 将空的单元格替换为空字符
             pf.fillna('', inplace=True)
@@ -390,8 +382,8 @@ class ToolsMixin(BaseMixin):
             sheets = workbook.sheetnames  # 获取表格中的所有表格
             worksheet = workbook[sheets[0]]  # 获取表格中所有表格中的的第一个表格
             rows_old = worksheet.max_row  # 获取表格中已存在的数据的行数
-            for i in range(0, index):
-                for j in range(0, len(list(acc_info_list)[i])):
+            for i in range(index):
+                for j in range(len(list(acc_info_list)[i])):
                     # 追加写入数据，注意是从i+rows_old行开始写入
                     worksheet.cell(row=i + 1 + rows_old, column=1 + j).value = list(acc_info_dict.values())[j]
             workbook.save(xls_path)  # 保存表格
@@ -412,11 +404,10 @@ class ToolsMixin(BaseMixin):
         # cv2.imwrite('all.png',screen_shot_)
         # part = screen_shot_[526:649, 494:524]
         ret = self.baidu_ocr(494, 526, 524, 649, 1)  # 获取体力区域的ocr结果
-        if ret == -1:
-            self.log.write_log('error','体力识别失败！')
-            return -1
-        else:
+        if ret != -1:
             return int(ret['words_result'][1]['words'].split('/')[0])
+        self.log.write_log('error','体力识别失败！')
+        return -1
 
     def rename(self, name, auto_id):  # 重命名
         # 2021/1/4 CyiceK对代码进行了维护
@@ -439,7 +430,7 @@ class ToolsMixin(BaseMixin):
         self.click(590, 370)  # 变更按钮
         time.sleep(1)
         self.lock_img('img/zhucaidan/bangzhu.bmp', elseclick=[(32, 32)])  # 锁定帮助
-        pcr_log(self.account).write_log(level='info', message='账号：%s已修改名字' % name)
+        pcr_log(self.account).write_log(level='info', message=f'账号：{name}已修改名字')
 
     def get_bar(self, bar: PCRelement, screen=None):
         """
@@ -461,12 +452,8 @@ class ToolsMixin(BaseMixin):
         tf = np.sqrt(((mid_line - fc) ** 2).sum(axis=2)).ravel()
         tb = np.sqrt(((mid_line - bc) ** 2).sum(axis=2)).ravel()
         t = tf < tb
-        left = 0
         right = len(t) - 1
-        for ind in range(len(t)):
-            if t[ind]:
-                left = ind
-                break
+        left = next((ind for ind in range(len(t)) if t[ind]), 0)
         for ind in range(len(t) - 1, -1, -1):
             if not t[ind]:
                 right = ind

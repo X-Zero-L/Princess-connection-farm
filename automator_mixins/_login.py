@@ -54,7 +54,7 @@ class LoginMixin(ToolsMixin):
                 continue
 
     @DEBUG_RECORD
-    def do_login(self, ac, pwd):  # 执行登陆逻辑
+    def do_login(self, ac, pwd):    # 执行登陆逻辑
         """
         :param ac:
         :param pwd:
@@ -127,7 +127,7 @@ class LoginMixin(ToolsMixin):
             elif self.d(resourceId="com.bilibili.priconne:id/gsc_rl_realname_web").exists():
                 return 1  # 说明要进行认证
             elif not self.d(resourceId="com.bilibili.priconne:id/tv_gsc_account_login").exists() and \
-                    not self.d(resourceId="com.bilibili.priconne:id/gsc_rl_realname_web").exists():
+                        not self.d(resourceId="com.bilibili.priconne:id/gsc_rl_realname_web").exists():
                 break
 
         def SkipAuth():
@@ -228,7 +228,7 @@ class LoginMixin(ToolsMixin):
                     # 这是关闭验证码 self.click(667, 65, post_delay=3)
                     # 结果出来为四个字的坐标
                     answer_result, _len, _id = cs.skip_caption(captcha_img=screen, question_type="X6004")
-                    for i in range(0, _len + 1):
+                    for i in range(_len + 1):
                         x = int(answer_result[i].split(',')[0]) + 157
                         y = int(answer_result[i].split(',')[1]) + 1
                         self.log.write_log('info', f">{self.account}-验证码第{i}坐标识别：{x},{y}")
@@ -279,6 +279,7 @@ class LoginMixin(ToolsMixin):
                 else:
                     self.log.write_log('info', f"{self.account}-存在未知领域，无法识别到验证码（或许已经进入主页面了），如有问题请加群带图联系开发者")
                     # return False
+
 
             def due_AutoCaptcha():
 
@@ -347,7 +348,7 @@ class LoginMixin(ToolsMixin):
             if captcha_skip is False:
                 while True:
                     if self.d(text="Geetest").exists() or self.d(description="Geetest").exists() or \
-                            self.d(resourceId="com.bilibili.priconne:id/iv_gs_title_close").exists():
+                                self.d(resourceId="com.bilibili.priconne:id/iv_gs_title_close").exists():
                         try:
                             AutoCaptcha()
                             due_AutoCaptcha()
@@ -384,10 +385,7 @@ class LoginMixin(ToolsMixin):
                     SkipAuth()
         if self.d(resourceId="com.bilibili.priconne:id/gsc_rl_realname_web").exists(timeout=0.1):
             return 1  # 说明要进行认证
-        if flag:
-            return -1
-        else:
-            return 0  # 正常
+        return -1 if flag else 0
 
     @DEBUG_RECORD
     def login(self, ac, pwd):
@@ -491,12 +489,12 @@ class LoginMixin(ToolsMixin):
 
         ORIGIN_MODE = True  # css炸裂之前的版本，设置为True后应付CSS炸裂之后的版本
 
+        if self.d(textContains="还剩1次实名认证机会").exists():
+            self.log.write_log("error", message=f'{self.account}账号实名仅剩1次验证机会了！')
+            raise Exception("实名仅剩1次验证机会了！")
+        time.sleep(5)
+        self._move_check()
         if ORIGIN_MODE:
-            if self.d(textContains="还剩1次实名认证机会").exists():
-                self.log.write_log("error", message='%s账号实名仅剩1次验证机会了！' % self.account)
-                raise Exception("实名仅剩1次验证机会了！")
-            time.sleep(5)
-            self._move_check()
             # self.d(resourceId="com.bilibili.priconne:id/bsgamesdk_edit_authentication_name").click()
             self.click(464, 205)
             # self.d.xpath(
@@ -530,7 +528,7 @@ class LoginMixin(ToolsMixin):
             else:
                 # 阿B实名界面有两个。。。xpath在u2全局查找元素点击上有adb爆炸的bug，先用这个凑合着吧
                 if self.d(textContains="还剩1次实名认证机会").exists():
-                    self.log.write_log("error", message='%s账号实名仅剩1次验证机会了！' % self.account)
+                    self.log.write_log("error", message=f'{self.account}账号实名仅剩1次验证机会了！')
                     raise Exception("实名仅剩1次验证机会了！")
                 time.sleep(5)
                 self._move_check()
@@ -551,12 +549,6 @@ class LoginMixin(ToolsMixin):
                 self.d(text="我知道了").click()
         else:
 
-            # CSS炸裂，变大
-            if self.d(textContains="还剩1次实名认证机会").exists():
-                self.log.write_log("error", message='%s账号实名仅剩1次验证机会了！' % self.account)
-                raise Exception("实名仅剩1次验证机会了！")
-            time.sleep(5)
-            self._move_check()
             self.d.drag(827, 488, 827, 80, 0.1)
             self._move_check()
             self.d.drag(827, 488, 827, 80, 0.1)

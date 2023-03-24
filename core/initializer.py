@@ -1,6 +1,7 @@
 """
 新的启动函数，支持Batch，schedule操作等。
 """
+
 import multiprocessing
 import pathlib
 import sys
@@ -33,7 +34,7 @@ abs_dir = os.path.abspath(adb_dir)
 if add_adb_to_path:
     # print("添加到环境变量：", abs_dir)
     env = os.getenv("path")
-    env = abs_dir + ";" + env
+    env = f"{abs_dir};{env}"
     os.putenv("path", env)
 
 
@@ -51,12 +52,12 @@ def _connect():  # 连接adb与uiautomator
             port_list = set(check_known_emulators())
             os.system("taskkill /im adb.exe /f")
             # print(port_list)
-            print("自动搜寻模拟器：" + str(port_list))
+            print(f"自动搜寻模拟器：{port_list}")
             for port in port_list:
-                os.system(f'cd {adb_dir} & adb connect ' + emulator_ip + ':' + str(port))
+                os.system(f'cd {adb_dir} & adb connect {emulator_ip}:{str(port)}')
         elif len(emulator_ports) != 0:
             for port in emulator_ports:
-                os.system(f'cd {adb_dir} & adb connect ' + emulator_ip + ':' + str(port))
+                os.system(f'cd {adb_dir} & adb connect {emulator_ip}:{str(port)}')
         else:
             os.system(f"cd {adb_dir} & adb start-server")
         # os.system 函数正常情况下返回是进程退出码，0为正常退出码，其余为异常
@@ -65,10 +66,10 @@ def _connect():  # 连接adb与uiautomator
             pcr_log('admin').write_log(level='error', message="连接模拟器失败")
             exit(1)
         """
-        # os.system(f"cd {adb_dir} & adb kill-server")
+            # os.system(f"cd {adb_dir} & adb kill-server")
 
     except Exception as e:
-        pcr_log('admin').write_log(level='error', message='连接失败, 原因: {}'.format(e))
+        pcr_log('admin').write_log(level='error', message=f'连接失败, 原因: {e}')
         exit(1)
 
 
@@ -113,7 +114,7 @@ class Device:
 
     def __init__(self, serial: Optional[str] = None, id: Optional[int] = None, launcher: Optional[LauncherBase] = None):
         assert (serial is not None or (id is not None and launcher is not None)), \
-            "必须填写serial，或者id与launcher！"
+                "必须填写serial，或者id与launcher！"
         self.serial = serial
         self.state = 0
         self._in_process = False  # 是否已经进入多进程
@@ -124,9 +125,8 @@ class Device:
         self.a: Optional[Automator] = None  # Automator,先不启动，在子进程中启动
         self.emulator_id: Optional[int] = id  # 模拟器ID
         self.emulator_launcher: Optional[LauncherBase] = launcher  # 模拟器控制器
-        if self.emulator_launcher is not None:
-            if self.serial is None:
-                self.serial = self.emulator_launcher.id_to_serial(self.emulator_id)
+        if self.emulator_launcher is not None and self.serial is None:
+            self.serial = self.emulator_launcher.id_to_serial(self.emulator_id)
         self.device = adbutils.adb.device(self.serial)
 
     def with_emulator(self):
@@ -148,8 +148,7 @@ class Device:
 
     def restart_emulator(self, block=False):
         if self.emulator_launcher is not None:
-            if self.emulator_launcher is not None:
-                self.emulator_launcher.restart(self.emulator_id, block)
+            self.emulator_launcher.restart(self.emulator_id, block)
             if block:
                 self.wait_for_healthy()
 
@@ -175,9 +174,8 @@ class Device:
     def wait_for_healthy(self, timeout=360):
         last = time.time()
         while time.time() - last < timeout:
-            if self.is_connected():
-                if self.is_healthy():
-                    return True
+            if self.is_connected() and self.is_healthy():
+                return True
             time.sleep(1)
         return False
 
@@ -273,9 +271,8 @@ class AllDevices:
             if self.devices[serial].is_healthy():
                 if self.devices[serial].state == Device.DEVICE_OFFLINE:
                     self.devices[serial].start()
-            else:
-                if self.devices[serial].state != Device.DEVICE_OFFLINE:
-                    self.devices[serial].offline()
+            elif self.devices[serial].state != Device.DEVICE_OFFLINE:
+                self.devices[serial].offline()
 
     def refrush_device_all(self):
         for s in self.devices:
@@ -312,10 +309,7 @@ class AllDevices:
         """
         判断是否所有设备均空闲
         """
-        for d in self.devices.values():
-            if d.state == Device.DEVICE_BUSY:
-                return False
-        return True
+        return all(d.state != Device.DEVICE_BUSY for d in self.devices.values())
 
     def put(self, s):
         """
@@ -331,31 +325,19 @@ class AllDevices:
         """
         返回当前busy状态的设备数
         """
-        cnt = 0
-        for i in self.devices.values():
-            if i.state == Device.DEVICE_BUSY:
-                cnt += 1
-        return cnt
+        return sum(i.state == Device.DEVICE_BUSY for i in self.devices.values())
 
     def count_processed(self):
         """
         返回当前_in_process的设备总数
         """
-        cnt = 0
-        for i in self.devices.values():
-            if i._in_process:
-                cnt += 1
-        return cnt
+        return sum(bool(i._in_process) for i in self.devices.values())
 
     def list_all_free_devices(self) -> List[Device]:
         """
         返回当前全部空闲的设备
         """
-        L = []
-        for i in self.devices.values():
-            if i.state == Device.DEVICE_AVAILABLE:
-                L += [i]
-        return L
+        return [i for i in self.devices.values() if i.state == Device.DEVICE_AVAILABLE]
 
     def get_device_by_id(self, id):
         id = int(id)
@@ -631,16 +613,17 @@ class PCRInitializer:
 
                             def is_pcr_pack(module, mypath):
                                 file_name = getattr(module, "__file__", "")
-                                if not isinstance(file_name, str):
-                                    return False
-                                if file_name.startswith(mypath):
-                                    return True
-                                return False
+                                return (
+                                    bool(file_name.startswith(mypath))
+                                    if isinstance(file_name, str)
+                                    else False
+                                )
 
                             for name, module in sys.modules.items():
-                                if is_pcr_pack(module, mypath):
-                                    if hasattr(module, "debug"):
-                                        print(device.serial, " - ", name, "DEBUG状态：", getattr(module, "debug"))
+                                if is_pcr_pack(module, mypath) and hasattr(
+                                    module, "debug"
+                                ):
+                                    print(device.serial, " - ", name, "DEBUG状态：", getattr(module, "debug"))
                         elif msg["method"] == "freeze":
                             if enable_pause:
                                 print(device.serial, " - ", "enable_pause已经启用，请使用shift+P暂停。")
@@ -688,7 +671,7 @@ class PCRInitializer:
         while not flag["exit"]:
             try:
                 if quit_emulator_when_free and device_on \
-                        and device.with_emulator() and time.time() - last_busy_time > max_free_time:
+                            and device.with_emulator() and time.time() - last_busy_time > max_free_time:
                     device_on = False
                     device.quit_emulator()
                     out_queue.put({"device_status": {"serial": serial, "status": "sleep"}})
@@ -1011,14 +994,14 @@ class Schedule:
         self.subs = {}  # 关系表
         self.not_restart_name = []  # record=1，不用重启的列表
         self.always_restart_name = []  # record=2，循环执行的列表
-        if name != "":
+        if not name:
+            self.name = ""
+            self.schedule = {}
+        else:
             self.name = name
             self.schedule = AutomatorRecorder.getschedule(name)
             self._parse()
             self._init_status()
-        else:
-            self.name = ""
-            self.schedule = {}
         self.run_thread: Optional[threading.Thread] = None
 
     def _parse(self):
@@ -1038,14 +1021,16 @@ class Schedule:
                 if s["__disable__"] is True:
                     continue
                 elif s["__disable__"] is not False:
-                    detail = None
-                    for flag, details in FLAGS.items():
-                        if s["__disable__"] == flag:
-                            detail = details
-                            break
-                    if detail is not None:
-                        if detail["default"] is True:
-                            continue
+                    detail = next(
+                        (
+                            details
+                            for flag, details in FLAGS.items()
+                            if s["__disable__"] == flag
+                        ),
+                        None,
+                    )
+                    if detail is not None and detail["default"] is True:
+                        continue
 
             if s["type"] == "config":
                 self.config.update(s)
@@ -1099,9 +1084,8 @@ class Schedule:
         os.makedirs(os.path.join("rec", self.name), exist_ok=True)
         target = os.path.join("rec", self.name, "state.txt")
         try:
-            f = open(target, "r")
-            js = json.load(f)
-            f.close()
+            with open(target, "r") as f:
+                js = json.load(f)
             return js
         except:
             self._save(self._default_state())
@@ -1114,9 +1098,7 @@ class Schedule:
         """
         if self.pcr is None:
             return
-        L = []
-        for i in self.pcr.finished_tasks:
-            L += [i]
+        L = list(self.pcr.finished_tasks)
         self.pcr.finished_tasks.clear()
         for i in L:
             self.pcr._add_task(i)
@@ -1157,10 +1139,9 @@ class Schedule:
                     if mode == 0:
                         rs["finished"] = True
                         rs["error"] = None
-                    if mode == 1:
-                        if rs["error"] is not None:
-                            rs["error"] = None
-                            rs["finished"] = False
+                    if mode == 1 and rs["error"] is not None:
+                        rs["error"] = None
+                        rs["finished"] = False
                     if mode == 2:
                         if name is None and nam in self.not_restart_name:
                             continue
@@ -1279,13 +1260,12 @@ class Schedule:
         L = len(parsed)
         if os.path.exists(os.path.join(rec, "_fin")):
             return L, L
-        else:
-            cnt = 0
-            for _, acc, _, _ in parsed:
-                rs = AutomatorRecorder(acc, rec).get_run_status()
-                if rs["finished"] and rs["error"] is None:
-                    cnt += 1
-            return cnt, L
+        cnt = 0
+        for _, acc, _, _ in parsed:
+            rs = AutomatorRecorder(acc, rec).get_run_status()
+            if rs["finished"] and rs["error"] is None:
+                cnt += 1
+        return cnt, L
 
     def is_free(self):
         """
@@ -1293,9 +1273,7 @@ class Schedule:
         """
         if self.pcr.devices.count_busy() > 0:
             return False
-        if len(self.pcr.tasks.get_attribute("queue")) > 0:
-            return False
-        return True
+        return len(self.pcr.tasks.get_attribute("queue")) <= 0
 
     def _run(self):
         # self._get_status()
@@ -1358,10 +1336,9 @@ class Schedule:
                     self.checked_status[rec] = True
                     self._add(nam, bat)
                     self.log("info", f"开始执行计划：** {nam} - {bat} **")
-                else:
-                    if typ == "asap":
-                        self.run_status[rec] = 2
-                        self.log("info", f"跳过计划：** {nam} **")
+                elif typ == "asap":
+                    self.run_status[rec] = 2
+                    self.log("info", f"跳过计划：** {nam} **")
             time.sleep(1)
 
     def run(self):
@@ -1388,10 +1365,7 @@ class Schedule:
             sh = cond["start_hour"]
             eh = cond["end_hour"]
             ch = st.tm_hour
-            if sh <= eh:
-                flag = sh <= ch <= eh
-            else:
-                flag = (0 <= ch <= eh) or (sh <= ch <= 23)
+            flag = sh <= ch <= eh if sh <= eh else (0 <= ch <= eh) or (sh <= ch <= 23)
             if not flag:
                 return False
         if "can_juanzeng" in cond:
@@ -1402,11 +1376,7 @@ class Schedule:
             diff = time.time() - tm
             if diff < 8 * 3600 + 60:
                 return False
-        if "_last_rec" in cond:
-            # 前置batch条件
-            if not Schedule.is_complete(cond["_last_rec"]):
-                return False
-        return True
+        return bool("_last_rec" not in cond or Schedule.is_complete(cond["_last_rec"]))
 
     def run_first_time(self):
         """
@@ -1482,8 +1452,7 @@ class Schedule:
         """
         L = []
         for i, j in self.subs.items():
-            D = {}
-            D["name"] = i
+            D = {"name": i}
             if type(j) is tuple:
                 D["mode"] = "batch"
                 bat, rec = j
@@ -1492,10 +1461,7 @@ class Schedule:
                 elif not last_state and self.run_status[rec] == 2:
                     D["status"] = "skip"  # 跳过
                 elif last_state or self.checked_status[rec]:
-                    if last_state:
-                        D["status"] = "last"
-                    else:
-                        D["status"] = "busy"  # 正在执行
+                    D["status"] = "last" if last_state else "busy"
                     D["detail"] = AutomatorRecorder.get_batch_state(bat, rec)
                     D["error"] = {}
                     D["cnt"] = D["detail"]["error"] + D["detail"]["finish"]

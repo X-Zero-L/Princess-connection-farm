@@ -72,14 +72,13 @@ class DebugRecord:
 
     def gettime(self):
         cur_time = time.time()
-        time_str = datetime.datetime.fromtimestamp(cur_time).strftime("%H%M%S")
-        return time_str
+        return datetime.datetime.fromtimestamp(cur_time).strftime("%H%M%S")
 
     def cutstr(self, s, length=30):
         s = str(s)
         s = s.replace("\n", "")
         if len(s) > length:
-            s = s[:length] + "..."
+            s = f"{s[:length]}..."
         return s
 
     def getitemstr(self, item):
@@ -91,14 +90,10 @@ class DebugRecord:
             return self.cutstr(str(item), 60)
 
     def add(self, item="()", *args, **kwargs):
-        new_args = []
-        for arg in args:
-            new_args += [self.getitemstr(arg)]
-        new_kwargs = {}
-        for kw in kwargs:
-            new_kwargs[kw] = self.getitemstr(kwargs[kw])
+        new_args = [self.getitemstr(arg) for arg in args]
+        new_kwargs = {kw: self.getitemstr(kwargs[kw]) for kw in kwargs}
         str_args = ','.join(new_args)
-        str_kwargs = ','.join(["%s:%s" % (str(k), str(v)) for k, v in new_kwargs.items()])
+        str_kwargs = ','.join([f"{str(k)}:{str(v)}" for k, v in new_kwargs.items()])
         cur = {"cmd": f"{item} -- {str_args} -- {str_kwargs}", "start": self.gettime(), "end": None}
         if item not in debug_record_filter:
             if self.Q.full():
@@ -107,7 +102,7 @@ class DebugRecord:
         return cur
 
     def get(self, running=False):
-        L = self.Q.queue if not running else self.running.values()
+        L = self.running.values() if running else self.Q.queue
         out = []
         for l in L:
             if l['end'] is None:
@@ -322,10 +317,7 @@ class BaseMixin:
     @staticmethod
     def _get_at(at):
         # at参数的转换
-        if isinstance(at, PCRelement):
-            return at.at
-        else:
-            return at
+        return at.at if isinstance(at, PCRelement) else at
 
     @DEBUG_RECORD
     def send_move_method(self, method, msg):
@@ -502,7 +494,7 @@ class BaseMixin:
         if clear:
             self.d.clear_text()
             self._move_check()
-        if len(s) > 0:
+        if s != "":
             self.d.send_keys(s)
 
     @DEBUG_RECORD
@@ -516,8 +508,7 @@ class BaseMixin:
         """
         self._move_check()
         img, at = self._get_img_at(img, at)
-        position = UIMatcher.img_where(screen, img, threshold, at, method)
-        if position:
+        if position := UIMatcher.img_where(screen, img, threshold, at, method):
             self.click(*position, pre_delay, post_delay)
             return True
         else:
@@ -749,10 +740,7 @@ class BaseMixin:
         if self.is_exists(img='img/error/connecting.bmp', at=(749, 20, 934, 52), screen=screen):
             return False
         sc_cut = UIMatcher.img_cut(screen, MAIN_BTN["loading_left"].at)
-        if (sc_cut == 1).all():
-            # 全黑
-            return False
-        return True
+        return not (sc_cut == 1).all()
 
     @DEBUG_RECORD
     def wait_for_loading(self, screen=None, delay=0.5, timeout=30):
@@ -794,12 +782,19 @@ class BaseMixin:
             None: 识别失败
             Else: 识别的key
         """
-        for retry in range(max_retry):
+        for _ in range(max_retry):
             sc = self.getscreen() if screen is None else screen
             screen = None
-            pdict = {}
-            for i, j in id_dict.items():
-                pdict[i] = self.img_prob(j, screen=sc, method=method, preprocess=preprocess, apply_screen=True)
+            pdict = {
+                i: self.img_prob(
+                    j,
+                    screen=sc,
+                    method=method,
+                    preprocess=preprocess,
+                    apply_screen=True,
+                )
+                for i, j in id_dict.items()
+            }
             tu = max(pdict, key=lambda x: pdict[x])
             l = sorted(pdict.values(), reverse=True)
             if debug:
@@ -807,7 +802,6 @@ class BaseMixin:
                 self.log.write_log('debug', str(l))
             if l[0] < max_threshold or (len(l)>1 and l[0] - l[1] < diff_threshold):
                 time.sleep(0.5)
-                continue
             else:
                 return tu
         return None
@@ -815,21 +809,21 @@ class BaseMixin:
     def run_func(self, th_name, a, fun, async_sexitflag=False):
         if async_sexitflag:
             th_name.exit()
-            pass
         else:
             self.do(a, fun)
 
     def do(self, a, fun):
         # 自定义，在此定义你要运行的参数
         getattr(asyncio, 'run')(fun)
-        # getattr获取asyncio中run对象，然后进行调用
-        # 凄凄惨惨的替代eval这类危险的函数
-        pass
 
     def c_async(self, a, account, fun, sync=False, async_sexitflag=False):
-        _async_infodic = {'a': a, 'account': account, 'fun': fun,
-                          '"pack_Thread-" + str(account)': "pack_Thread-" + str(account),
-                          'async_sexitflag': async_sexitflag}
+        _async_infodic = {
+            'a': a,
+            'account': account,
+            'fun': fun,
+            '"pack_Thread-" + str(account)': f"pack_Thread-{str(account)}",
+            'async_sexitflag': async_sexitflag,
+        }
         th = Multithreading(kwargs=_async_infodic)
         # print(threading.currentThread().ident)
         # id, name
@@ -837,12 +831,6 @@ class BaseMixin:
         if sync:
             # 线程同步异步开关，True/False
             th.join()
-            # 线程等待，执行完才能进入下一个线程
-            pass
-        else:
-            # 异步，推荐
-            pass
-        pass
 
     @DEBUG_RECORD
     def getscreen(self, filename=None, force_slow=False):
@@ -891,13 +879,12 @@ class BaseMixin:
                     except Exception as e:
                         if force_fast_screencut:
                             raise FastScreencutException(*e.args)
-                        else:
-                            self.log.write_log("warning", f"快速截图出错 {e}， 使用低速截图")
-                            self.fastscreencut_retry += 1
-                            if self.fastscreencut_retry == 3:
-                                self.log.write_log("error", f"快速截图连续出错3次，关闭快速截图。")
-                                self.receive_minicap.stop()
-                            self.last_screen = self.d.screenshot(filename, format="opencv")
+                        self.log.write_log("warning", f"快速截图出错 {e}， 使用低速截图")
+                        self.fastscreencut_retry += 1
+                        if self.fastscreencut_retry == 3:
+                            self.log.write_log("error", "快速截图连续出错3次，关闭快速截图。")
+                            self.receive_minicap.stop()
+                        self.last_screen = self.d.screenshot(filename, format="opencv")
                 else:
                     if filename is None:
                         self.last_screen = self.d.screenshot(filename, format="opencv")
@@ -906,9 +893,8 @@ class BaseMixin:
                         self.last_screen = cv2.imread(filename)
                 self.last_screen_time = time.time()
                 output_screen = UIMatcher.AutoRotateClockWise90(self.last_screen)
-                if debug:
-                    if output_screen is None:
-                        self.log.write_log('debug', "ERROR！截图为空！")
+                if debug and output_screen is None:
+                    self.log.write_log('debug', "ERROR！截图为空！")
                 if output_screen is not None and output_screen.shape != (540, 960, 3):
                     self.log.write_log('waring', f"Warning: 截屏大小为{output_screen.shape} "
                                                  f"应为 (540,960,3)， 可能模拟器分辨率没有被正确设置！")
@@ -960,7 +946,7 @@ class BaseMixin:
         if type(elseclick) is tuple:
             elseclick = [elseclick]
 
-        inf_attempt = True if retry == 0 else False
+        inf_attempt = retry == 0
         attempt = 0
         img = preprocess(img)
         while inf_attempt or attempt < retry:
@@ -978,7 +964,7 @@ class BaseMixin:
                 self.click(clicks[0], clicks[1], post_delay=elsedelay)
             time.sleep(alldelay)
             attempt += 1
-        return True if inf_attempt or attempt < retry else False
+        return inf_attempt or attempt < retry
 
     @DEBUG_RECORD
     def guochang(self, screen_shot, template_paths, suiji=1):
@@ -988,8 +974,7 @@ class BaseMixin:
 
         screen_shot = screen_shot
         template_paths = template_paths
-        active_path = UIMatcher.imgs_where(screen_shot, template_paths)
-        if active_path:
+        if active_path := UIMatcher.imgs_where(screen_shot, template_paths):
             # print(active_path)
             if 'img/juqing/tiaoguo_1.bmp' in active_path:
                 x, y = active_path['img/juqing/tiaoguo_1.bmp']
@@ -999,13 +984,9 @@ class BaseMixin:
                     # print(name)
                     self.click(x, y)
             time.sleep(0.5)
-        else:
-            if suiji:
-                # print('未找到所需的按钮,将点击左上角')
-                self.click(0.1 * self.dWidth, 0.1 * self.dHeight)
-            else:
-                # print('未找到所需的按钮,无动作')
-                pass
+        elif suiji:
+            # print('未找到所需的按钮,将点击左上角')
+            self.click(0.1 * self.dWidth, 0.1 * self.dHeight)
 
     @DEBUG_RECORD
     def lock_fun(self, RTFun, *args, ifclick=None, ifbefore=0., ifdelay=1., elseclick=None,
@@ -1032,12 +1013,11 @@ class BaseMixin:
             rv = RTFun(*args, **kwargs)
             if rv is False:
                 return False
-            else:
-                for clicks in ifclick:
-                    time.sleep(ifbefore)
-                    self.click(clicks[0], clicks[1], post_delay=elseafter)
-                    time.sleep(ifdelay)
-                raise ReturnValue(rv)
+            for clicks in ifclick:
+                time.sleep(ifbefore)
+                self.click(clicks[0], clicks[1], post_delay=elseafter)
+                time.sleep(ifdelay)
+            raise ReturnValue(rv)
 
         def f2():
             for clicks in elseclick:
@@ -1063,10 +1043,10 @@ class BaseMixin:
 
         def func():
             sc2 = self.getscreen()
-            if self.img_equal(old_screen[0], sc2, at=at, similarity=similarity) < threshold:
-                flag = True
-            else:
-                flag = False
+            flag = (
+                self.img_equal(old_screen[0], sc2, at=at, similarity=similarity)
+                < threshold
+            )
             if refresh_screen:
                 old_screen[0] = sc2
             return flag
@@ -1152,14 +1132,12 @@ class BaseMixin:
                 time.sleep(ifdelay)
 
         for i, j in img.items():
-            if not isinstance(i, PCRelement):
-                _img, _at = self._get_img_at(i[0], i[1])
-            else:
-                _img, _at = self._get_img_at(i, None)
-            if lock_no:
-                fun = FC.not_exist
-            else:
-                fun = FC.exist
+            _img, _at = (
+                self._get_img_at(i, None)
+                if isinstance(i, PCRelement)
+                else self._get_img_at(i[0], i[1])
+            )
+            fun = FC.not_exist if lock_no else FC.exist
             fun(PCRelement(img=_img, at=_at), dofunction=f2, rv=j, method=method,
                 threshold=threshold, preprocess=preprocess, apply_screen=apply_screen,
                 is_black=is_black, black_threshold=black_threshold)
@@ -1247,24 +1225,23 @@ class BaseMixin:
                               is_black=is_black, black_threshold=black_threshold)
         if until_disappear is None and until_appear is None:
             self.click(btn, post_delay=0.5)  # 这边不加延迟，点击的波纹会影响到until_disappear自己
+        elif until_appear is not None:
+            r = self.lock_img(until_appear, elseclick=btn, elsedelay=elsedelay, timeout=timeout, retry=retry,
+                              is_raise=is_raise, method=method, elseafter=0 if elseafter is None else elseafter,
+                              side_check=side_check, preprocess=preprocess, apply_screen=apply_screen,
+                              is_black=is_black, black_threshold=black_threshold)
+        elif until_disappear == "self":
+            r = self.lock_no_img(btn, elseclick=btn, elsedelay=elsedelay, timeout=timeout, retry=retry,
+                                 is_raise=is_raise, method=method,
+                                 elseafter=0.8 if elseafter is None else elseafter, side_check=side_check,
+                                 preprocess=preprocess, apply_screen=apply_screen,
+                                 is_black=is_black, black_threshold=black_threshold)
         else:
-            if until_appear is not None:
-                r = self.lock_img(until_appear, elseclick=btn, elsedelay=elsedelay, timeout=timeout, retry=retry,
-                                  is_raise=is_raise, method=method, elseafter=0 if elseafter is None else elseafter,
-                                  side_check=side_check, preprocess=preprocess, apply_screen=apply_screen,
-                                  is_black=is_black, black_threshold=black_threshold)
-            elif until_disappear == "self":
-                r = self.lock_no_img(btn, elseclick=btn, elsedelay=elsedelay, timeout=timeout, retry=retry,
-                                     is_raise=is_raise, method=method,
-                                     elseafter=0.8 if elseafter is None else elseafter, side_check=side_check,
-                                     preprocess=preprocess, apply_screen=apply_screen,
-                                     is_black=is_black, black_threshold=black_threshold)
-            elif until_disappear is not None:
-                r = self.lock_no_img(until_disappear, elseclick=btn, elsedelay=elsedelay, timeout=timeout,
-                                     retry=retry, is_raise=is_raise, method=method,
-                                     elseafter=0 if elseafter is None else elseafter, side_check=side_check,
-                                     preprocess=preprocess, apply_screen=apply_screen,
-                                     is_black=is_black, black_threshold=black_threshold)
+            r = self.lock_no_img(until_disappear, elseclick=btn, elsedelay=elsedelay, timeout=timeout,
+                                 retry=retry, is_raise=is_raise, method=method,
+                                 elseafter=0 if elseafter is None else elseafter, side_check=side_check,
+                                 preprocess=preprocess, apply_screen=apply_screen,
+                                 is_black=is_black, black_threshold=black_threshold)
         return r
 
     @DEBUG_RECORD
@@ -1538,21 +1515,31 @@ class BaseMixin:
             8: 'Redmi',
             9: 'LG',
         }
-        run_cmd('cd %s & adb -s %s shell setprop ro.product.model %s && exit' % (
-            adb_dir, self.address, phone_model[tmp_rand[0]]))
-        run_cmd('cd %s & adb -s %s shell setprop ro.product.brand %s && exit' % (
-            adb_dir, self.address, phone_model[tmp_rand[0]]))
+        run_cmd(
+            f'cd {adb_dir} & adb -s {self.address} shell setprop ro.product.model {phone_model[tmp_rand[0]]} && exit'
+        )
+        run_cmd(
+            f'cd {adb_dir} & adb -s {self.address} shell setprop ro.product.brand {phone_model[tmp_rand[0]]} && exit'
+        )
         run_cmd('cd %s & adb -s %s shell setprop ro.product.manufacturer %s && exit' % (adb_dir,
                                                                                         self.address,
                                                                                         phone_manufacturer[
                                                                                             tmp_rand[1]]))
-        run_cmd('cd %s & adb -s %s shell setprop phone.imei %s && exit' % (adb_dir, self.address, _get_imei(15)))
-        run_cmd('cd %s & adb -s %s shell setprop ro.product.name %s && exit' % (
-            adb_dir, self.address, phone_model[tmp_rand[2]]))
-        run_cmd('cd %s & adb -s %s shell setprop phone.imsi %s && exit' % (adb_dir, self.address, _get_imei(15)))
-        run_cmd('cd %s & adb -s %s shell setprop phone.linenum %s && exit' % (adb_dir, self.address, _get_imei(11)))
-        run_cmd('cd %s & adb -s %s shell setprop phone.simserial %s && exit' % (
-            adb_dir, self.address, _get_imei(20)))
+        run_cmd(
+            f'cd {adb_dir} & adb -s {self.address} shell setprop phone.imei {_get_imei(15)} && exit'
+        )
+        run_cmd(
+            f'cd {adb_dir} & adb -s {self.address} shell setprop ro.product.name {phone_model[tmp_rand[2]]} && exit'
+        )
+        run_cmd(
+            f'cd {adb_dir} & adb -s {self.address} shell setprop phone.imsi {_get_imei(15)} && exit'
+        )
+        run_cmd(
+            f'cd {adb_dir} & adb -s {self.address} shell setprop phone.linenum {_get_imei(11)} && exit'
+        )
+        run_cmd(
+            f'cd {adb_dir} & adb -s {self.address} shell setprop phone.simserial {_get_imei(20)} && exit'
+        )
         # print("》》》匿名完毕《《《")
         if clear_traces_and_cache:
             # 清除痕迹和缓存
@@ -1563,26 +1550,53 @@ class BaseMixin:
                 if i == clear_list[3]:
                     for j in not_clear_file:
                         run_cmd(
-                            f'cd {adb_dir} && adb -s {self.address} shell "su -c ' + "'" + f"cd {i} && mv -force {j} .. "
-                                                                                           f"&& exit" + "'")
+                            (
+                                (
+                                    f"""cd {adb_dir} && adb -s {self.address} shell "su -c '"""
+                                    + f"cd {i} && mv -force {j} .. && exit"
+                                )
+                                + "'"
+                            )
+                        )
                 run_cmd(
-                    f'cd {adb_dir} && adb -s {self.address} shell "su -c ' + "'" + f"cd {i} && rm -rf * && exit" + "'")
+                    f"""cd {adb_dir} && adb -s {self.address} shell "su -c '"""
+                    + f"cd {i} && rm -rf * && exit"
+                    + "'"
+                )
                 if i == clear_list[3]:
                     for j in not_clear_file:
                         run_cmd(
-                            f'cd {adb_dir} && adb -s {self.address} shell "su -c ' + "'" + f"cd {i} && mv -force ../{j} "
-                                                                                           f"&& exit" + "'")
+                            (
+                                (
+                                    f"""cd {adb_dir} && adb -s {self.address} shell "su -c '"""
+                                    + f"cd {i} && mv -force ../{j} && exit"
+                                )
+                                + "'"
+                            )
+                        )
 
             clear_list2 = ["time_*", "data_*"]
             for i in clear_list2:
                 run_cmd(
-                    f'cd {adb_dir} && adb -s {self.address} shell "su -c ' + "'" + f"cd /data/data/com.bilibili"
-                                                                                   f".priconne/files && rm -rf "
-                                                                                   f"{i} && exit" + "'")
+                    (
+                        (
+                            f"""cd {adb_dir} && adb -s {self.address} shell "su -c '"""
+                            + f"cd /data/data/com.bilibili.priconne/files && rm -rf {i} && exit"
+                        )
+                        + "'"
+                    )
+                )
             run_cmd(
-                f'cd {adb_dir} && adb -s {self.address} shell "su -c ' + "'" + 'cd data/data/com.bilibili.priconne'
-                                                                               '/lib && chmod 000 libsecsdk.so'
-                                                                               ' && exit' + "'")
+                (
+                    (
+                        f"""cd {adb_dir} && adb -s {self.address} shell "su -c '"""
+                        + 'cd data/data/com.bilibili.priconne'
+                        '/lib && chmod 000 libsecsdk.so'
+                        ' && exit'
+                    )
+                    + "'"
+                )
+            )
             # run_cmd(f'cd {adb_dir} && adb -s {self.address} shell "find. - name "time_*" | xargs rm - rf && exit"')
             # run_cmd(f'cd {adb_dir} && adb -s {self.address} shell "find. - name "data_*" | xargs rm - rf && exit"')
             # print("》》》匿名完毕《《《")
@@ -1648,9 +1662,6 @@ class BaseMixin:
                 for _ in range(anticlockwise_rotation_times):
                     screen_shot = UIMatcher.AutoRotateClockWise90(screen_shot)
             screen_shot = UIMatcher.AutoRotateClockWise90(screen_shot)
-            # cv2.imwrite('fuck_rot90_test.bmp', screen_shot_)
-            # screen_shot_ = rot90(screen_shot_)  # 旋转90°
-            pass
         screen_shot = screen_shot[y1:y2, x1:x2]  # 对角线点坐标
         screen_shot = after_preprocess(screen_shot)
 
@@ -1669,25 +1680,20 @@ class BaseMixin:
                     ocr_text = ocr_register.get(force_primary_equals_secondary_use)(screen_shot, size,
                                                                                     credibility, language, type,
                                                                                     blur=blur, allowstr=allowstr)
-        else:
-            if ocr_text == -1:
-                if len(ocr_mode_secondary) != 0:
-                    for ocr_second in ocr_mode_secondary.split(','):
-                        ocr_text = ocr_register.get(ocr_second)(screen_shot, size, credibility,
-                                                                language, type, blur=blur, allowstr=allowstr)
-                        if not ocr_text or ocr_text == -1:
-                            continue
-                        else:
-                            break
+        elif ocr_text == -1 and len(ocr_mode_secondary) != 0:
+            for ocr_second in ocr_mode_secondary.split(','):
+                ocr_text = ocr_register.get(ocr_second)(screen_shot, size, credibility,
+                                                        language, type, blur=blur, allowstr=allowstr)
+                if ocr_text and ocr_text != -1:
+                    break
 
         # OCR返回的数据 纠错
         try:
-            if ocr_text:
-                if debug:
-                    self.log.write_log('debug', self.account + "的ocr_center识别结果:" + ocr_text)
-                return str(ocr_text)
-            else:
+            if not ocr_text:
                 return -1
+            if debug:
+                self.log.write_log('debug', f"{self.account}的ocr_center识别结果:{ocr_text}")
+            return str(ocr_text)
         except:
             self.log.write_log('error', "ocr-error" + "OCR识别错误。")
             raise Exception("ocr-error", "OCR识别错误。")
@@ -1713,7 +1719,7 @@ class BaseMixin:
             # 原生输出有助于开发者
             result = result.json().get('words_result')[0].get('words')
             if debug:
-                self.log.write_log('debug', '百度OCR识别结果：%s' % result)
+                self.log.write_log('debug', f'百度OCR识别结果：{result}')
             return result
         except:
             self.log.write_log(level='error', message='百度OCR识别失败！请检查apikey和secretkey以及截图范围返回结果'
@@ -1739,15 +1745,15 @@ class BaseMixin:
                 'file': ('tmp.png', img_binary, 'image/png'),
                 # 'language': 'chs',
             }
-            result = requests.post(url="http://127.0.0.1:5000/ocr/ocrspace_ocr/%s" % language, files=files)
+            result = requests.post(
+                url=f"http://127.0.0.1:5000/ocr/ocrspace_ocr/{language}",
+                files=files,
+            )
             # 原生输出有助于开发者
             result = result.json().get('ParsedResults')[0].get('ParsedText')
             if debug:
-                self.log.write_log('debug', 'ocrspaceOCR识别结果：%s' % result)
-            if result:
-                return result
-            else:
-                return -1
+                self.log.write_log('debug', f'ocrspaceOCR识别结果：{result}')
+            return result or -1
         except:
             self.log.write_log(level='error', message='ocrspaceOCR识别失败！请检查ocrspace_ocr_apikey以及截图范围返回结果'
                                                       '是否有误！')
@@ -1767,10 +1773,10 @@ class BaseMixin:
             files = {'file': ('tmp.png', img_binary, 'image/png')}
             local_ocr_text = requests.post(url="http://127.0.0.1:5000/ocr/local_ocr/", files=files)
             if debug:
-                self.log.write_log('debug', '本地OCR识别结果：%s' % local_ocr_text.text)
+                self.log.write_log('debug', f'本地OCR识别结果：{local_ocr_text.text}')
             return local_ocr_text.text
         except Exception as ocr_error:
-            self.log.write_log(level='error', message='本地OCR识别失败，原因：%s' % ocr_error)
+            self.log.write_log(level='error', message=f'本地OCR识别失败，原因：{ocr_error}')
             return -1
 
     def ocr_local2(self, screen_shot=None, size=1.0, credibility=0.91, language='chs', type="text", blur=None,
@@ -1790,14 +1796,14 @@ class BaseMixin:
             # local_ocr_text_credibility = float(local_ocr_text[1])  # 可信度
             if round(float(r[1]), 2) > credibility:
                 if debug:
-                    self.log.write_log('debug', '本地OCR-2识别结果：%s' % local_ocr_text)
+                    self.log.write_log('debug', f'本地OCR-2识别结果：{local_ocr_text}')
                 return local_ocr_text
             else:
                 if debug:
-                    self.log.write_log('debug', '本地OCR-2识别结果：%s,该结果可信度太低，丢弃！' % local_ocr_text)
+                    self.log.write_log('debug', f'本地OCR-2识别结果：{local_ocr_text},该结果可信度太低，丢弃！')
                 return -1
         except Exception as ocr_error:
-            self.log.write_log(level='error', message='本地OCR-2识别失败，原因：%s' % ocr_error)
+            self.log.write_log(level='error', message=f'本地OCR-2识别失败，原因：{ocr_error}')
             return -1
 
     def ocr_local3(self, screen_shot=None, size=1.0, credibility=0.91, language='chs', type="text", blur=None,
@@ -1814,10 +1820,10 @@ class BaseMixin:
             files = {'file': ('tmp.png', img_binary, 'image/png')}
             local_ocr_text = requests.post(url="http://127.0.0.1:5000/ocr/local_ocr3/", files=files)
             if debug:
-                self.log.write_log('debug', '本地OCR3识别结果：%s' % local_ocr_text.text)
+                self.log.write_log('debug', f'本地OCR3识别结果：{local_ocr_text.text}')
             return local_ocr_text.text
         except Exception as ocr_error:
-            self.log.write_log(level='error', message='本地OCR3识别失败，原因：%s' % ocr_error)
+            self.log.write_log(level='error', message=f'本地OCR3识别失败，原因：{ocr_error}')
             return -1
 
     def easyocr_ocr(self, screen_shot=None, size=1.0, credibility=0.91, language='chs', type="text", blur=None,
@@ -1837,10 +1843,10 @@ class BaseMixin:
             data = {'file': img_binary, 'allowstr': allowstr}
             local_ocr_text = requests.post(url="http://127.0.0.1:5000/ocr/local_ocr4/", data=data)
             if debug:
-                self.log.write_log('debug', '本地OCR4识别结果：%s' % local_ocr_text.text)
+                self.log.write_log('debug', f'本地OCR4识别结果：{local_ocr_text.text}')
             return local_ocr_text.text
         except Exception as ocr_error:
-            self.log.write_log(level='error', message='本地OCR4识别失败，原因：%s' % ocr_error)
+            self.log.write_log(level='error', message=f'本地OCR4识别失败，原因：{ocr_error}')
             return -1
 
     def pcrocr_ocr(self, screen_shot=None, size=1.0, credibility=0.91, language='chs', type="text", blur=None,
@@ -1865,10 +1871,10 @@ class BaseMixin:
             local_ocr_text = requests.post(url="http://127.0.0.1:5000/ocr/pcrocr_ocr/", data=data)
             text = local_ocr_text.text
             if debug:
-                self.log.write_log('debug', 'PCR特化OCR识别结果：%s' % text)
+                self.log.write_log('debug', f'PCR特化OCR识别结果：{text}')
             return text
         except Exception as ocr_error:
-            self.log.write_log(level='error', message='PCR特化OCR识别失败，原因：%s' % ocr_error)
+            self.log.write_log(level='error', message=f'PCR特化OCR识别失败，原因：{ocr_error}')
             return -1
 
     def ocr_int(self, x1, y1, x2, y2, screen_shot=None):
@@ -1889,8 +1895,8 @@ class BaseMixin:
         if out == -1:
             # 重新投入数字特化处理
             out = self.ocr_center(x1, y1, x2, y2, screen_shot=screen_shot, size=5.0, credibility=0.9, type='number')
-            if out == -1:
-                raise OCRRecognizeError("整数OCR失败了！", outstr=str(out))
+        if out == -1:
+            raise OCRRecognizeError("整数OCR失败了！", outstr=str(out))
         out = make_it_as_number_as_possible(out)
         return int(out)
 
@@ -1953,9 +1959,6 @@ class Multithreading(threading.Thread, BaseMixin):
             self.a = kwargs['a']
             self.fun = kwargs['fun']
             self.account = kwargs['account']
-        else:
-            # self._stop_event.set()
-            pass
 
     def run(self):
         self._run_event.wait()

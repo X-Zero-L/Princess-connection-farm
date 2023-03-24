@@ -78,23 +78,23 @@ def BindSchedule(schedule):
 
 
 def RunningInput():
-    if not running_input:
-        if last_schedule == "":
-            wprint("* 由于没有指定schedule，running_input自动开启。")
-            wprint("* 可以在添加任务后，输入join屏蔽实时控制。")
-            wprint("* 输入help，查看实时控制帮助。")
-        else:
-            wprint("* 实时控制已屏蔽，可以在config.ini - running_input中进行设置。")
-            if end_shutdown:
-                eprint("* end_shutdown配置启动，全部任务结束后，将自动关机。")
-                JoinShutdown()
-            else:
-                wprint("* 全部任务结束后，将自动退出。")
-                JoinExit()
-    else:
+    if running_input:
         wprint("* 实时控制已经开启，可以在config.ini - running_input中进行设置。")
         wprint("* Tips：如果出现了子进程长时间未响应的情况，请输入join或在配置中关闭running_input。")
         wprint("* 输入help，查看实时控制帮助。")
+
+    elif last_schedule == "":
+        wprint("* 由于没有指定schedule，running_input自动开启。")
+        wprint("* 可以在添加任务后，输入join屏蔽实时控制。")
+        wprint("* 输入help，查看实时控制帮助。")
+    else:
+        wprint("* 实时控制已屏蔽，可以在config.ini - running_input中进行设置。")
+        if end_shutdown:
+            eprint("* end_shutdown配置启动，全部任务结束后，将自动关机。")
+            JoinShutdown()
+        else:
+            wprint("* 全部任务结束后，将自动退出。")
+            JoinExit()
 
 
 def FirstSchedule():
@@ -459,7 +459,7 @@ def CheckConstantImgs():
     for obj in dir(constant):
         if type(constant.__dict__[obj]) is dict and not obj.startswith("__"):
             CheckDict(constant.__dict__[obj])
-    if len(BADIMG) == 0:
+    if not BADIMG:
         wprint("* 全部图片检测完毕")
     else:
         eprint("* 存在缺失的图片，脚本可能无法正常运行。")
@@ -516,13 +516,10 @@ def Start_App():
 
 
 def get_arg(argv, key, default):
-    for ind, a in enumerate(argv):
-        if a == key:
-            return argv[ind + 1]
-    return default
+    return next((argv[ind + 1] for ind, a in enumerate(argv) if a == key), default)
 
 def has_arg(argv, key, default):
-    for ind, a in enumerate(argv):
+    for a in argv:
         if a == key:
             return True
     return default
